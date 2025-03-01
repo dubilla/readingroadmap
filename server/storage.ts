@@ -1,5 +1,7 @@
 import { books, lanes, type Book, type InsertBook, type Lane, type InsertLane, DEFAULT_LANES } from "@shared/schema";
 import { READING_SPEEDS, AVG_WORDS_PER_PAGE } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export interface IStorage {
   // Lane operations
@@ -17,81 +19,81 @@ export interface IStorage {
   updateReadingProgress(id: number, progress: number): Promise<Book>;
 }
 
-export class MemStorage implements IStorage {
-  private books: Map<number, Book>;
-  private lanes: Map<number, Lane>;
-  private bookId: number;
-  private laneId: number;
-
-  constructor() {
-    this.books = new Map();
-    this.lanes = new Map();
-    this.bookId = 1;
-    this.laneId = 1;
-
-    // Initialize default lanes
-    DEFAULT_LANES.forEach(lane => {
-      const id = this.laneId++;
-      this.lanes.set(id, { ...lane, id });
-    });
-  }
-
+export class DatabaseStorage implements IStorage {
   async getAllLanes(): Promise<Lane[]> {
-    return Array.from(this.lanes.values())
-      .sort((a, b) => a.order - b.order);
+    try {
+      return await db.select().from(lanes).orderBy(lanes.order);
+    } catch (error) {
+      console.error('Error fetching lanes:', error);
+      return [];
+    }
   }
 
   async getLane(id: number): Promise<Lane | undefined> {
-    return this.lanes.get(id);
+    try {
+      const [lane] = await db.select().from(lanes).where(eq(lanes.id, id));
+      return lane;
+    } catch (error) {
+      console.error(`Error fetching lane ${id}:`, error);
+      return undefined;
+    }
   }
 
-  async createLane(insertLane: InsertLane): Promise<Lane> {
-    const id = this.laneId++;
-    const lane: Lane = { ...insertLane, id };
-    this.lanes.set(id, lane);
-    return lane;
+  async createLane(lane: InsertLane): Promise<Lane> {
+    const [newLane] = await db.insert(lanes).values(lane).returning();
+    return newLane;
   }
 
   async updateLane(id: number, updates: Partial<Lane>): Promise<Lane> {
-    const lane = await this.getLane(id);
-    if (!lane) throw new Error(`Lane ${id} not found`);
+    const [updatedLane] = await db
+      .update(lanes)
+      .set(updates)
+      .where(eq(lanes.id, id))
+      .returning();
 
-    const updatedLane = { ...lane, ...updates };
-    this.lanes.set(id, updatedLane);
+    if (!updatedLane) throw new Error(`Lane ${id} not found`);
     return updatedLane;
   }
 
   async getAllBooks(): Promise<Book[]> {
-    return Array.from(this.books.values());
+    try {
+      return await db.select().from(books);
+    } catch (error) {
+      console.error('Error fetching books:', error);
+      return [];
+    }
   }
 
   async getBook(id: number): Promise<Book | undefined> {
-    return this.books.get(id);
+    const [book] = await db.select().from(books).where(eq(books.id, id));
+    return book;
   }
 
   async createBook(insertBook: InsertBook): Promise<Book> {
-    const id = this.bookId++;
     const estimatedMinutes = Math.round(
       (insertBook.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.AVERAGE
     );
 
-    const book: Book = {
-      ...insertBook,
-      id,
-      readingProgress: 0,
-      estimatedMinutes,
-    };
+    const [book] = await db
+      .insert(books)
+      .values({
+        ...insertBook,
+        readingProgress: 0,
+        estimatedMinutes,
+      })
+      .returning();
 
-    this.books.set(id, book);
     return book;
   }
 
   async updateBook(id: number, updates: Partial<Book>): Promise<Book> {
-    const book = await this.getBook(id);
-    if (!book) throw new Error(`Book ${id} not found`);
+    const [updatedBook] = await db
+      .update(books)
+      .set(updates)
+      .where(eq(books.id, id))
+      .returning();
 
-    const updatedBook = { ...book, ...updates };
-    this.books.set(id, updatedBook);
+    if (!updatedBook) throw new Error(`Book ${id} not found`);
     return updatedBook;
   }
 
@@ -103,11 +105,35 @@ export class MemStorage implements IStorage {
   }
 
   async updateReadingProgress(id: number, progress: number): Promise<Book> {
-    return this.updateBook(id, { 
+    return this.updateBook(id, {
       readingProgress: progress,
       status: progress >= 100 ? "completed" : "reading"
     });
   }
 }
 
-export const storage = new MemStorage();
+// Initialize storage with database implementation
+export const storage = new DatabaseStorage();
+
+// Initialize default lanes if they don't exist
+async function initializeDefaultLanes() {
+  try {
+    console.log('Checking for existing lanes...');
+    const existingLanes = await storage.getAllLanes();
+
+    if (existingLanes.length === 0) {
+      console.log('No lanes found, creating default lanes...');
+      for (const lane of DEFAULT_LANES) {
+        await storage.createLane(lane);
+      }
+      console.log('Default lanes created successfully');
+    } else {
+      console.log(`Found ${existingLanes.length} existing lanes`);
+    }
+  } catch (error) {
+    console.error('Error initializing default lanes:', error);
+  }
+}
+
+// Call initialization
+initializeDefaultLanes().catch(console.error);
