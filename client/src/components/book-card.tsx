@@ -12,7 +12,7 @@ interface BookCardProps {
 
 export function BookCard({ book }: BookCardProps) {
   const queryClient = useQueryClient();
-  
+
   const updateProgressMutation = useMutation({
     mutationFn: async (progress: number) => {
       await apiRequest("PATCH", `/api/books/${book.id}/progress`, { progress });
@@ -21,6 +21,8 @@ export function BookCard({ book }: BookCardProps) {
       queryClient.invalidateQueries({ queryKey: ["/api/books"] });
     }
   });
+
+  const readingProgress = book.readingProgress || 0;
 
   return (
     <Card className="overflow-hidden">
@@ -31,7 +33,7 @@ export function BookCard({ book }: BookCardProps) {
           className="absolute inset-0 w-full h-full object-cover"
         />
       </div>
-      
+
       <CardContent className="p-4 space-y-4">
         <div>
           <h4 className="font-semibold leading-tight">{book.title}</h4>
@@ -45,17 +47,17 @@ export function BookCard({ book }: BookCardProps) {
               {formatReadingTime(book.estimatedMinutes)}
             </span>
           </div>
-          
+
           {book.status === "reading" && (
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Progress</span>
                 <span className="text-muted-foreground">
-                  {formatProgress(book.readingProgress)}
+                  {formatProgress(readingProgress)}
                 </span>
               </div>
               <Slider
-                value={[book.readingProgress]}
+                value={[readingProgress]}
                 min={0}
                 max={100}
                 step={1}

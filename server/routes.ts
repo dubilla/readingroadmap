@@ -1,9 +1,38 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertBookSchema } from "@shared/schema";
+import { insertBookSchema, insertLaneSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express) {
+  // Lane routes
+  app.get("/api/lanes", async (_req, res) => {
+    const lanes = await storage.getAllLanes();
+    res.json(lanes);
+  });
+
+  app.post("/api/lanes", async (req, res) => {
+    const result = insertLaneSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ error: "Invalid lane data" });
+    }
+
+    const lane = await storage.createLane(result.data);
+    res.json(lane);
+  });
+
+  app.patch("/api/lanes/:id", async (req, res) => {
+    const { id } = req.params;
+    const updates = req.body;
+
+    try {
+      const lane = await storage.updateLane(parseInt(id), updates);
+      res.json(lane);
+    } catch (error) {
+      res.status(404).json({ error: "Lane not found" });
+    }
+  });
+
+  // Book routes
   app.get("/api/books", async (_req, res) => {
     const books = await storage.getAllBooks();
     res.json(books);
@@ -21,17 +50,17 @@ export async function registerRoutes(app: Express) {
 
   app.patch("/api/books/:id/lane", async (req, res) => {
     const { id } = req.params;
-    const { lane } = req.body;
+    const { laneId } = req.body;
 
-    if (!lane || typeof lane !== "string") {
-      return res.status(400).json({ error: "Invalid lane" });
+    if (typeof laneId !== "number") {
+      return res.status(400).json({ error: "Invalid lane ID" });
     }
 
     try {
-      const book = await storage.updateBookLane(parseInt(id), lane);
+      const book = await storage.updateBookLane(parseInt(id), laneId);
       res.json(book);
     } catch (error) {
-      res.status(404).json({ error: "Book not found" });
+      res.status(404).json({ error: "Book or lane not found" });
     }
   });
 
