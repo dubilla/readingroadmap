@@ -2,7 +2,7 @@ import { books, lanes, swimlanes, type Book, type InsertBook, type Lane, type In
 import { DEFAULT_SWIMLANE, DEFAULT_SWIMLANE_LANES, COMPLETED_LANE } from "@shared/schema";
 import { READING_SPEEDS, AVG_WORDS_PER_PAGE } from "@shared/schema";
 import { db } from "./db";
-import { eq, isNull, and } from "drizzle-orm";
+import { eq, isNull, and, or, sql } from "drizzle-orm";
 
 export interface IStorage {
   // Swimlane operations
@@ -25,6 +25,7 @@ export interface IStorage {
   updateBook(id: number, updates: Partial<Book>): Promise<Book>;
   updateBookLane(id: number, laneId: number): Promise<Book>;
   updateReadingProgress(id: number, progress: number): Promise<Book>;
+  searchBooks(query: string): Promise<Book[]>; // Added method
 }
 
 export class DatabaseStorage implements IStorage {
@@ -184,6 +185,23 @@ export class DatabaseStorage implements IStorage {
     }
 
     return this.updateBook(id, updates);
+  }
+
+  async searchBooks(query: string): Promise<Book[]> {
+    try {
+      const results = await db.select()
+        .from(books)
+        .where(
+          or(
+            sql`lower(${books.title}) like ${`%${query.toLowerCase()}%`}`,
+            sql`lower(${books.author}) like ${`%${query.toLowerCase()}%`}`
+          )
+        );
+      return results;
+    } catch (error) {
+      console.error('Error searching books:', error);
+      return [];
+    }
   }
 }
 

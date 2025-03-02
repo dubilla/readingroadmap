@@ -110,5 +110,15 @@ export async function registerRoutes(app: Express) {
     }
   });
 
+  app.get("/api/books/search", async (req, res) => {
+    const { query } = req.query;
+    if (typeof query !== "string") {
+      return res.status(400).json({ error: "Query parameter is required" });
+    }
+
+    const results = await storage.searchBooks(query);
+    res.json(results);
+  });
+
   return createServer(app);
 }

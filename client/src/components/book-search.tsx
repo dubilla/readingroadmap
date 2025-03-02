@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,26 +9,37 @@ import { Search, Plus } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { searchBooks, getCoverImageUrl, type OpenLibraryBook } from "@/lib/openLibrary";
 import { apiRequest } from "@/lib/queryClient";
+import type { Book } from "@shared/schema";
 
 interface BookSearchProps {
   laneId: number;
+}
+
+interface SearchResult {
+  id?: number; // Local database ID if it exists
+  title: string;
+  author: string;
+  pages: number;
+  coverUrl: string;
+  isLocal: boolean;
+  openLibraryData?: OpenLibraryBook; // Original Open Library data if from external API
 }
 
 export function BookSearch({ laneId }: BookSearchProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [results, setResults] = useState<OpenLibraryBook[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const debouncedQuery = useDebounce(query, 300);
   const queryClient = useQueryClient();
 
   const addBookMutation = useMutation({
-    mutationFn: async (book: OpenLibraryBook) => {
+    mutationFn: async (book: SearchResult) => {
       await apiRequest("POST", "/api/books", {
         title: book.title,
-        author: book.author_name?.[0] || "Unknown Author",
-        pages: book.number_of_pages_median || 200,
-        coverUrl: getCoverImageUrl(book.cover_i),
+        author: book.author,
+        pages: book.pages,
+        coverUrl: book.coverUrl,
         status: "to-read",
         laneId
       });
@@ -39,7 +50,7 @@ export function BookSearch({ laneId }: BookSearchProps) {
     }
   });
 
-  // Search when query changes
+  // Search both local database and Open Library
   const handleSearch = async (value: string) => {
     if (!value) {
       setResults([]);
@@ -47,9 +58,48 @@ export function BookSearch({ laneId }: BookSearchProps) {
     }
 
     setIsSearching(true);
-    const books = await searchBooks(value);
-    setResults(books);
-    setIsSearching(false);
+    try {
+      // Search local database
+      const localResponse = await fetch(`/api/books/search?query=${encodeURIComponent(value)}`);
+      const localBooks: Book[] = await localResponse.json();
+
+      // Search Open Library
+      const openLibraryBooks = await searchBooks(value);
+
+      // Combine and deduplicate results
+      const combinedResults: SearchResult[] = [
+        // Local books
+        ...localBooks.map(book => ({
+          id: book.id,
+          title: book.title,
+          author: book.author,
+          pages: book.pages,
+          coverUrl: book.coverUrl,
+          isLocal: true
+        })),
+        // Open Library books (exclude if title+author already exists locally)
+        ...openLibraryBooks
+          .filter(olBook => !localBooks.some(
+            localBook => 
+              localBook.title.toLowerCase() === olBook.title.toLowerCase() &&
+              localBook.author.toLowerCase() === (olBook.author_name?.[0] || "").toLowerCase()
+          ))
+          .map(book => ({
+            title: book.title,
+            author: book.author_name?.[0] || "Unknown Author",
+            pages: book.number_of_pages_median || 200,
+            coverUrl: getCoverImageUrl(book.cover_i),
+            isLocal: false,
+            openLibraryData: book
+          }))
+      ];
+
+      setResults(combinedResults);
+    } catch (error) {
+      console.error("Error searching books:", error);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Update search when debounced query changes
@@ -87,35 +137,38 @@ export function BookSearch({ laneId }: BookSearchProps) {
                 ))}
               </div>
             ) : results.length > 0 ? (
-              results.map((book) => (
-                <Card key={book.key} className="overflow-hidden">
+              results.map((book, index) => (
+                <Card key={`${book.title}-${index}`} className="overflow-hidden">
                   <CardContent className="p-4 flex gap-4">
                     <img
-                      src={getCoverImageUrl(book.cover_i)}
+                      src={book.coverUrl}
                       alt={book.title}
                       className="w-16 h-24 object-cover flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold truncate">{book.title}</h4>
-                      {book.author_name && (
-                        <p className="text-sm text-muted-foreground">
-                          {book.author_name[0]}
-                        </p>
-                      )}
-                      {book.number_of_pages_median && (
-                        <p className="text-sm text-muted-foreground">
-                          {book.number_of_pages_median} pages
+                      <p className="text-sm text-muted-foreground">
+                        {book.author}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {book.pages} pages
+                      </p>
+                      {book.isLocal && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Already in your library
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addBookMutation.mutate(book)}
-                      disabled={addBookMutation.isPending}
-                    >
-                      Add
-                    </Button>
+                    {!book.isLocal && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => addBookMutation.mutate(book)}
+                        disabled={addBookMutation.isPending}
+                      >
+                        Add
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))
