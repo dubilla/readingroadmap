@@ -2,13 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { ReadingBoard } from "@/components/reading-board";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MOCK_BOOKS } from "@/lib/constants";
 import type { Book } from "@shared/schema";
 
 export default function Home() {
   const { data: books, isLoading } = useQuery<Book[]>({
-    queryKey: ["/api/books"],
-    initialData: MOCK_BOOKS
+    queryKey: ["/api/books"]
   });
 
   if (isLoading) {
@@ -27,7 +25,7 @@ export default function Home() {
 
         <Card>
           <CardContent className="p-6">
-            <ReadingBoard books={books} />
+            <ReadingBoard books={books || []} />
           </CardContent>
         </Card>
       </div>

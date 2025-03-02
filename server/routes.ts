@@ -7,6 +7,7 @@ export async function registerRoutes(app: Express) {
   // Lane routes
   app.get("/api/lanes", async (_req, res) => {
     const lanes = await storage.getAllLanes();
+    console.log('GET /api/lanes response:', lanes);
     res.json(lanes);
   });
 
@@ -35,6 +36,7 @@ export async function registerRoutes(app: Express) {
   // Book routes
   app.get("/api/books", async (_req, res) => {
     const books = await storage.getAllBooks();
+    console.log('GET /api/books response:', books);
     res.json(books);
   });
 
