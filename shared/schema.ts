@@ -2,12 +2,20 @@ import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const swimlanes = pgTable("swimlanes", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  order: integer("order").notNull(),
+});
+
 export const lanes = pgTable("lanes", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description"),
   order: integer("order").notNull(),
-  type: text("type").notNull(), // "backlog", "next-up", "in-progress", "completed"
+  type: text("type").notNull(), // "backlog", "in-progress", "completed"
+  swimlaneId: integer("swimlane_id"), // null for completed lane
 });
 
 export const books = pgTable("books", {
@@ -23,10 +31,14 @@ export const books = pgTable("books", {
   estimatedMinutes: integer("estimated_minutes").notNull(),
 });
 
+export const insertSwimlaneSchema = createInsertSchema(swimlanes).omit({
+  id: true,
+});
+
 export const insertLaneSchema = createInsertSchema(lanes).omit({
   id: true,
 }).extend({
-  type: z.enum(["backlog", "next-up", "in-progress", "completed"])
+  type: z.enum(["backlog", "in-progress", "completed"])
 });
 
 export const insertBookSchema = createInsertSchema(books).omit({ 
@@ -38,6 +50,8 @@ export const insertBookSchema = createInsertSchema(books).omit({
   status: z.enum(["to-read", "reading", "completed"])
 });
 
+export type InsertSwimlane = z.infer<typeof insertSwimlaneSchema>;
+export type Swimlane = typeof swimlanes.$inferSelect;
 export type InsertLane = z.infer<typeof insertLaneSchema>;
 export type Lane = typeof lanes.$inferSelect;
 export type InsertBook = z.infer<typeof insertBookSchema>;
@@ -53,30 +67,34 @@ export const READING_SPEEDS = {
 // Average words per page for books
 export const AVG_WORDS_PER_PAGE = 250;
 
-// Default lanes configuration
-export const DEFAULT_LANES = [
+// Default swimlane
+export const DEFAULT_SWIMLANE = {
+  name: "General Reading",
+  description: "General books to read",
+  order: 0,
+} as const;
+
+// Default lanes configuration for each swimlane
+export const DEFAULT_SWIMLANE_LANES = [
   {
     name: "Backlog",
     description: "Books to read eventually",
     order: 0,
-    type: "backlog"
-  },
-  {
-    name: "Next Up",
-    description: "Books to read soon",
-    order: 1,
-    type: "next-up"
+    type: "backlog" as const
   },
   {
     name: "Currently Reading",
     description: "Books in progress",
-    order: 2,
-    type: "in-progress"
-  },
-  {
-    name: "Finished",
-    description: "Completed books",
-    order: 3,
-    type: "completed"
+    order: 1,
+    type: "in-progress" as const
   }
 ] as const;
+
+// Completed lane configuration (single lane for all completed books)
+export const COMPLETED_LANE = {
+  name: "Read",
+  description: "Finished books",
+  order: 999, // Always at the end
+  type: "completed" as const,
+  swimlaneId: null // No swimlane for completed books
+} as const;

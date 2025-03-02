@@ -1,14 +1,42 @@
 import type { Express } from "express";
 import { createServer } from "http";
 import { storage } from "./storage";
-import { insertBookSchema, insertLaneSchema } from "@shared/schema";
+import { insertBookSchema, insertLaneSchema, insertSwimlaneSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express) {
+  // Swimlane routes
+  app.get("/api/swimlanes", async (_req, res) => {
+    const swimlanes = await storage.getAllSwimlanes();
+    console.log('GET /api/swimlanes response:', swimlanes);
+    res.json(swimlanes);
+  });
+
+  app.post("/api/swimlanes", async (req, res) => {
+    const result = insertSwimlaneSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ error: "Invalid swimlane data" });
+    }
+
+    const swimlane = await storage.createSwimlane(result.data);
+    res.json(swimlane);
+  });
+
   // Lane routes
   app.get("/api/lanes", async (_req, res) => {
     const lanes = await storage.getAllLanes();
     console.log('GET /api/lanes response:', lanes);
     res.json(lanes);
+  });
+
+  app.get("/api/swimlanes/:id/lanes", async (req, res) => {
+    const { id } = req.params;
+    const lanes = await storage.getLanesForSwimlane(parseInt(id));
+    res.json(lanes);
+  });
+
+  app.get("/api/lanes/completed", async (_req, res) => {
+    const lane = await storage.getCompletedLane();
+    res.json(lane);
   });
 
   app.post("/api/lanes", async (req, res) => {

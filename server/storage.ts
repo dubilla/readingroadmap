@@ -1,11 +1,19 @@
-import { books, lanes, type Book, type InsertBook, type Lane, type InsertLane, DEFAULT_LANES } from "@shared/schema";
+import { books, lanes, swimlanes, type Book, type InsertBook, type Lane, type InsertLane, type Swimlane, type InsertSwimlane } from "@shared/schema";
+import { DEFAULT_SWIMLANE, DEFAULT_SWIMLANE_LANES, COMPLETED_LANE } from "@shared/schema";
 import { READING_SPEEDS, AVG_WORDS_PER_PAGE } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, isNull, and } from "drizzle-orm";
 
 export interface IStorage {
+  // Swimlane operations
+  getAllSwimlanes(): Promise<Swimlane[]>;
+  getSwimlane(id: number): Promise<Swimlane | undefined>;
+  createSwimlane(swimlane: InsertSwimlane): Promise<Swimlane>;
+
   // Lane operations
   getAllLanes(): Promise<Lane[]>;
+  getLanesForSwimlane(swimlaneId: number): Promise<Lane[]>;
+  getCompletedLane(): Promise<Lane | undefined>;
   getLane(id: number): Promise<Lane | undefined>;
   createLane(lane: InsertLane): Promise<Lane>;
   updateLane(id: number, updates: Partial<Lane>): Promise<Lane>;
@@ -20,12 +28,65 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  // Swimlane operations
+  async getAllSwimlanes(): Promise<Swimlane[]> {
+    try {
+      return await db.select().from(swimlanes).orderBy(swimlanes.order);
+    } catch (error) {
+      console.error('Error fetching swimlanes:', error);
+      return [];
+    }
+  }
+
+  async getSwimlane(id: number): Promise<Swimlane | undefined> {
+    try {
+      const [swimlane] = await db.select().from(swimlanes).where(eq(swimlanes.id, id));
+      return swimlane;
+    } catch (error) {
+      console.error(`Error fetching swimlane ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async createSwimlane(swimlane: InsertSwimlane): Promise<Swimlane> {
+    const [newSwimlane] = await db.insert(swimlanes).values(swimlane).returning();
+    return newSwimlane;
+  }
+
+  // Lane operations
   async getAllLanes(): Promise<Lane[]> {
     try {
       return await db.select().from(lanes).orderBy(lanes.order);
     } catch (error) {
       console.error('Error fetching lanes:', error);
       return [];
+    }
+  }
+
+  async getLanesForSwimlane(swimlaneId: number): Promise<Lane[]> {
+    try {
+      return await db.select()
+        .from(lanes)
+        .where(eq(lanes.swimlaneId, swimlaneId))
+        .orderBy(lanes.order);
+    } catch (error) {
+      console.error(`Error fetching lanes for swimlane ${swimlaneId}:`, error);
+      return [];
+    }
+  }
+
+  async getCompletedLane(): Promise<Lane | undefined> {
+    try {
+      const [completedLane] = await db.select()
+        .from(lanes)
+        .where(and(
+          eq(lanes.type, "completed"),
+          isNull(lanes.swimlaneId)
+        ));
+      return completedLane;
+    } catch (error) {
+      console.error('Error fetching completed lane:', error);
+      return undefined;
     }
   }
 
@@ -55,6 +116,7 @@ export class DatabaseStorage implements IStorage {
     return updatedLane;
   }
 
+  // Book operations
   async getAllBooks(): Promise<Book[]> {
     try {
       return await db.select().from(books);
@@ -105,30 +167,51 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateReadingProgress(id: number, progress: number): Promise<Book> {
-    return this.updateBook(id, {
+    const book = await this.getBook(id);
+    if (!book) throw new Error(`Book ${id} not found`);
+
+    // If book is completed, move it to the completed lane
+    let updates: Partial<Book> = {
       readingProgress: progress,
       status: progress >= 100 ? "completed" : "reading"
-    });
+    };
+
+    if (progress >= 100) {
+      const completedLane = await this.getCompletedLane();
+      if (completedLane) {
+        updates.laneId = completedLane.id;
+      }
+    }
+
+    return this.updateBook(id, updates);
   }
 }
 
 // Initialize storage with database implementation
 export const storage = new DatabaseStorage();
 
-// Initialize default lanes if they don't exist
+// Initialize default swimlane and lanes if they don't exist
 async function initializeDefaultLanes() {
   try {
-    console.log('Checking for existing lanes...');
-    const existingLanes = await storage.getAllLanes();
+    console.log('Checking for existing swimlanes...');
+    const existingSwimlanes = await storage.getAllSwimlanes();
 
-    if (existingLanes.length === 0) {
-      console.log('No lanes found, creating default lanes...');
-      for (const lane of DEFAULT_LANES) {
-        await storage.createLane(lane);
+    if (existingSwimlanes.length === 0) {
+      console.log('Creating default swimlane...');
+      const swimlane = await storage.createSwimlane(DEFAULT_SWIMLANE);
+
+      console.log('Creating default lanes for swimlane...');
+      for (const lane of DEFAULT_SWIMLANE_LANES) {
+        await storage.createLane({
+          ...lane,
+          swimlaneId: swimlane.id
+        });
       }
-      console.log('Default lanes created successfully');
+
+      console.log('Creating completed lane...');
+      await storage.createLane(COMPLETED_LANE);
     } else {
-      console.log(`Found ${existingLanes.length} existing lanes`);
+      console.log(`Found ${existingSwimlanes.length} existing swimlanes`);
     }
   } catch (error) {
     console.error('Error initializing default lanes:', error);
