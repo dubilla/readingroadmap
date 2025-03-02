@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { apiRequest } from "@/lib/queryClient";
 import type { Book, Lane, InsertLane, Swimlane, InsertSwimlane } from "@shared/schema";
 import { insertLaneSchema, insertSwimlaneSchema } from "@shared/schema";
+import { BookSearch } from "./book-search";
 
 interface ReadingBoardProps {
   books: Book[];
@@ -147,9 +148,12 @@ export function ReadingBoard({ books }: ReadingBoardProps) {
                     <div key={lane.id} className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="font-medium">{lane.name}</h4>
-                        <span className="text-sm text-muted-foreground">
-                          {books.filter((b) => b.laneId === lane.id).length} books
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            {books.filter((b) => b.laneId === lane.id).length} books
+                          </span>
+                          <BookSearch laneId={lane.id} />
+                        </div>
                       </div>
 
                       <Droppable droppableId={lane.id.toString()}>
