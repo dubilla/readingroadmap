@@ -112,12 +112,20 @@ export async function registerRoutes(app: Express) {
 
   app.get("/api/books/search", async (req, res) => {
     const { query } = req.query;
+    console.log('Search query:', query);
+
     if (typeof query !== "string") {
       return res.status(400).json({ error: "Query parameter is required" });
     }
 
-    const results = await storage.searchBooks(query);
-    res.json(results);
+    try {
+      const results = await storage.searchBooks(query);
+      console.log('Search results:', results);
+      res.json(results);
+    } catch (error) {
+      console.error('Error searching books:', error);
+      res.status(500).json({ error: "Failed to search books" });
+    }
   });
 
   return createServer(app);

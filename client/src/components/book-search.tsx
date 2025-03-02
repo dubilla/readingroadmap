@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -103,7 +103,7 @@ export function BookSearch({ laneId }: BookSearchProps) {
   };
 
   // Update search when debounced query changes
-  useState(() => {
+  useEffect(() => {
     handleSearch(debouncedQuery);
   }, [debouncedQuery]);
 
