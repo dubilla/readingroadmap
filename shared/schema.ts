@@ -16,7 +16,7 @@ export const swimlanes = pgTable("swimlanes", {
   name: text("name").notNull(),
   description: text("description"),
   order: integer("order").notNull(),
-  userId: integer("user_id").notNull(), // Added user relationship
+  userId: integer("user_id"), // Made optional for default swimlanes
 });
 
 export const lanes = pgTable("lanes", {
@@ -92,35 +92,3 @@ export const READING_SPEEDS = {
 
 // Average words per page for books
 export const AVG_WORDS_PER_PAGE = 250;
-
-// Default swimlane
-export const DEFAULT_SWIMLANE = {
-  name: "General Reading",
-  description: "General books to read",
-  order: 0,
-} as const;
-
-// Default lanes configuration for each swimlane
-export const DEFAULT_SWIMLANE_LANES = [
-  {
-    name: "Backlog",
-    description: "Books to read eventually",
-    order: 0,
-    type: "backlog" as const
-  },
-  {
-    name: "Currently Reading",
-    description: "Books in progress",
-    order: 1,
-    type: "in-progress" as const
-  }
-] as const;
-
-// Completed lane configuration (single lane for all completed books)
-export const COMPLETED_LANE = {
-  name: "Read",
-  description: "Finished books",
-  order: 999, // Always at the end
-  type: "completed" as const,
-  swimlaneId: null // No swimlane for completed books
-} as const;

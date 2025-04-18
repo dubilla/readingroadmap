@@ -1,11 +1,34 @@
 import express, { type Request, Response, NextFunction } from "express";
 import 'dotenv/config';
+import session from 'express-session';
+import passport from 'passport';
+import { setupAuth } from "./auth";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Configure session
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+  })
+);
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Setup authentication
+setupAuth();
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -57,14 +80,15 @@ app.use((req, res, next) => {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on port 5000
-  // this serves both the API and the client
-  const port = 5000;
+  // Get port and host from environment variables or use defaults
+  const port = process.env.PORT || 3000;
+  const host = process.env.HOST || 'localhost';
+
   server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
+    port: Number(port),
+    host,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
+    log(`Listening on http://${host}:${port}`);
   });
 })();

@@ -1,10 +1,16 @@
-import { books, lanes, swimlanes, type Book, type InsertBook, type Lane, type InsertLane, type Swimlane, type InsertSwimlane } from "@shared/schema";
-import { DEFAULT_SWIMLANE, DEFAULT_SWIMLANE_LANES, COMPLETED_LANE } from "@shared/schema";
+import { books, lanes, swimlanes, type Book, type InsertBook, type Lane, type InsertLane, type Swimlane, type InsertSwimlane, users, type User, type InsertUser } from "@shared/schema";
+import { DEFAULT_SWIMLANE, DEFAULT_SWIMLANE_LANES, COMPLETED_LANE } from "@shared/defaults";
 import { READING_SPEEDS, AVG_WORDS_PER_PAGE } from "@shared/schema";
 import { db } from "./db";
 import { eq, isNull, and, or, sql } from "drizzle-orm";
+import { hashPassword } from "./auth";
 
 export interface IStorage {
+  // User operations
+  getUserById(id: number): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: InsertUser & { password: string }): Promise<User>;
+
   // Swimlane operations
   getAllSwimlanes(): Promise<Swimlane[]>;
   getSwimlane(id: number): Promise<Swimlane | undefined>;
@@ -20,15 +26,50 @@ export interface IStorage {
 
   // Book operations
   getAllBooks(): Promise<Book[]>;
+  getBooksForUser(userId: number): Promise<Book[]>;
   getBook(id: number): Promise<Book | undefined>;
   createBook(book: InsertBook): Promise<Book>;
   updateBook(id: number, updates: Partial<Book>): Promise<Book>;
   updateBookLane(id: number, laneId: number): Promise<Book>;
   updateReadingProgress(id: number, progress: number): Promise<Book>;
-  searchBooks(query: string): Promise<Book[]>; // Added method
+  searchBooks(query: string): Promise<Book[]>; 
 }
 
 export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUserById(id: number): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      return user;
+    } catch (error) {
+      console.error(`Error fetching user ${id}:`, error);
+      return undefined;
+    }
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+      return user;
+    } catch (error) {
+      console.error(`Error fetching user by email:`, error);
+      return undefined;
+    }
+  }
+
+  async createUser(userData: InsertUser & { password: string }): Promise<User> {
+    const { password, ...userInfo } = userData;
+    const hashedPassword = hashPassword(password);
+    
+    const [user] = await db.insert(users).values({
+      ...userInfo, 
+      email: userInfo.email.toLowerCase(),
+      hashedPassword
+    }).returning();
+    
+    return user;
+  }
+
   // Swimlane operations
   async getAllSwimlanes(): Promise<Swimlane[]> {
     try {
@@ -123,6 +164,17 @@ export class DatabaseStorage implements IStorage {
       return await db.select().from(books);
     } catch (error) {
       console.error('Error fetching books:', error);
+      return [];
+    }
+  }
+  
+  async getBooksForUser(userId: number): Promise<Book[]> {
+    try {
+      return await db.select()
+        .from(books)
+        .where(eq(books.userId, userId));
+    } catch (error) {
+      console.error(`Error fetching books for user ${userId}:`, error);
       return [];
     }
   }
