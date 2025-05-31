@@ -8,15 +8,23 @@ import type { User } from '@shared/schema';
 export function setupAuth() {
   // Serialize user to session
   passport.serializeUser((user: any, done) => {
+    console.log("Serializing user:", user);
     done(null, user.id);
   });
 
   // Deserialize user from session
   passport.deserializeUser(async (id: number, done) => {
     try {
+      console.log("Deserializing user ID:", id);
       const user = await storage.getUserById(id);
-      done(null, user || false);
+      if (!user) {
+        console.log("User not found during deserialization");
+        return done(null, false);
+      }
+      console.log("Deserialized user:", user);
+      done(null, user);
     } catch (error) {
+      console.error("Error during deserialization:", error);
       done(error, false);
     }
   });
@@ -30,24 +38,29 @@ export function setupAuth() {
       },
       async (email, password, done) => {
         try {
+          console.log("Attempting login for email:", email);
           // Find user by email
           const user = await storage.getUserByEmail(email);
           
           // User not found
           if (!user) {
+            console.log("User not found for email:", email);
             return done(null, false, { message: 'Invalid email or password' });
           }
           
           // Check password
           const passwordValid = compareSync(password, user.hashedPassword);
           if (!passwordValid) {
+            console.log("Invalid password for user:", email);
             return done(null, false, { message: 'Invalid email or password' });
           }
           
           // Success - return user without password
           const { hashedPassword, ...safeUser } = user;
+          console.log("Login successful for user:", safeUser);
           return done(null, safeUser);
         } catch (error) {
+          console.error("Error during authentication:", error);
           return done(error);
         }
       }

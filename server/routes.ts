@@ -16,7 +16,8 @@ export async function registerRoutes(app: Express) {
       });
       const result = registerSchema.safeParse(req.body);
       if (!result.success) {
-        return res.status(400).json({ error: "Invalid registration data" });
+        const errorMessage = result.error.errors[0]?.message || "Invalid registration data";
+        return res.status(400).json({ error: errorMessage });
       }
 
       // Check if user already exists
@@ -34,8 +35,10 @@ export async function registerRoutes(app: Express) {
       // Log in user automatically
       req.login(safeUser, (err) => {
         if (err) {
-          return res.status(500).json({ error: "Failed to log in" });
+          console.error("Login error after registration:", err);
+          return res.status(500).json({ error: "Failed to log in after registration" });
         }
+        console.log("User logged in after registration:", safeUser);
         return res.status(201).json(safeUser);
       });
     } catch (error) {

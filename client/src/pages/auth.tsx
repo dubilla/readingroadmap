@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,7 +20,6 @@ const loginSchema = z.object({
 });
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters")
 });
@@ -46,11 +45,19 @@ export default function AuthPage() {
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
       email: "",
       password: ""
     }
   });
+  
+  // Add form state logging
+  useEffect(() => {
+    const subscription = registerForm.watch((value, { name, type }) => {
+      console.log('Form value changed:', { value, name, type });
+      console.log('Form errors:', registerForm.formState.errors);
+    });
+    return () => subscription.unsubscribe();
+  }, [registerForm]);
   
   // Login mutation
   const loginMutation = useMutation({
@@ -79,6 +86,10 @@ export default function AuthPage() {
   const registerMutation = useMutation({
     mutationFn: async (data: RegisterFormValues) => {
       const response = await apiRequest("POST", "/api/auth/register", data);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Registration failed");
+      }
       const user = await response.json();
       return user;
     },
@@ -92,7 +103,7 @@ export default function AuthPage() {
     onError: (error: any) => {
       toast({
         title: "Registration failed",
-        description: error?.message || "There was an error creating your account",
+        description: error.message || "There was an error creating your account",
         variant: "destructive"
       });
     }
@@ -102,8 +113,21 @@ export default function AuthPage() {
     loginMutation.mutate(data);
   };
   
-  const onRegisterSubmit = (data: RegisterFormValues) => {
-    registerMutation.mutate(data);
+  const onRegisterSubmit = async (data: RegisterFormValues) => {
+    console.log('Form data before submission:', data);
+    console.log('Form validation state:', registerForm.formState);
+    console.log('Form errors:', registerForm.formState.errors);
+    
+    // Check if form is valid
+    const isValid = await registerForm.trigger();
+    console.log('Form validation result:', isValid);
+    
+    if (isValid) {
+      console.log('Attempting to submit registration...');
+      registerMutation.mutate(data);
+    } else {
+      console.log('Form validation failed, not submitting');
+    }
   };
   
   return (
@@ -168,19 +192,6 @@ export default function AuthPage() {
             ) : (
               <Form {...registerForm}>
                 <form onSubmit={registerForm.handleSubmit(onRegisterSubmit)} className="space-y-4">
-                  <FormField
-                    control={registerForm.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="John Doe" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                   <FormField
                     control={registerForm.control}
                     name="email"

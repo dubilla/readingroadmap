@@ -8,7 +8,6 @@ import { useLocation } from "wouter";
 interface User {
   id: number;
   email: string;
-  name: string;
 }
 
 // Auth context type
