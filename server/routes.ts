@@ -12,7 +12,8 @@ export async function registerRoutes(app: Express) {
     try {
       // Validate registration data
       const registerSchema = insertUserSchema.extend({
-        password: z.string().min(8)
+        password: z.string().min(8),
+        name: z.string().min(1)
       });
       const result = registerSchema.safeParse(req.body);
       if (!result.success) {
@@ -48,7 +49,7 @@ export async function registerRoutes(app: Express) {
   });
 
   app.post("/api/auth/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: any, user: any, info: any) => {
       if (err) {
         return next(err);
       }
@@ -85,6 +86,9 @@ export async function registerRoutes(app: Express) {
   // Swimlane routes
   app.get("/api/swimlanes", isAuthenticated, async (req, res) => {
     const user = getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     const swimlanes = await storage.getAllSwimlanes();
     // Filter for user's swimlanes
     const userSwimlanes = swimlanes.filter(s => !s.userId || s.userId === user.id);
@@ -94,6 +98,9 @@ export async function registerRoutes(app: Express) {
 
   app.post("/api/swimlanes", isAuthenticated, async (req, res) => {
     const user = getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     
     const result = insertSwimlaneSchema.safeParse({
       ...req.body,
@@ -151,6 +158,9 @@ export async function registerRoutes(app: Express) {
   // Book routes
   app.get("/api/books", isAuthenticated, async (req, res) => {
     const user = getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     const books = await storage.getBooksForUser(user.id);
     console.log('GET /api/books response:', books);
     res.json(books);
@@ -158,6 +168,9 @@ export async function registerRoutes(app: Express) {
 
   app.post("/api/books", isAuthenticated, async (req, res) => {
     const user = getCurrentUser(req);
+    if (!user) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
     
     const result = insertBookSchema.safeParse({
       ...req.body,

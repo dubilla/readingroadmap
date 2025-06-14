@@ -3,12 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-
-// User type definition
-interface User {
-  id: number;
-  email: string;
-}
+import { type User } from "@shared/schema";
 
 // Auth context type
 interface AuthContextType {
