@@ -13,5 +13,6 @@ export function formatReadingTime(minutes: number): string {
 }
 
 export function formatProgress(progress: number): string {
-  return `${Math.round(progress)}%`;
+  const clampedProgress = Math.max(0, progress);
+  return `${Math.round(clampedProgress)}%`;
 }
