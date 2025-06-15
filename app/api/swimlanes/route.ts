@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../lib/supabase'
+import { db } from '../../../lib/database'
 import { z } from 'zod'
 
 const swimlaneSchema = z.object({
@@ -10,33 +10,8 @@ const swimlaneSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 401 }
-      )
-    }
-
-    const { data: swimlanes, error } = await supabase
-      .from('swimlanes')
-      .select('*')
-      .or(`user_id.is.null,user_id.eq.${user.id}`)
-      .order('order', { ascending: true })
+    // For now, we'll use a simple approach - in production you'd want proper auth
+    const { data: swimlanes, error } = await db.query('swimlanes')
 
     if (error) {
       console.error('Error fetching swimlanes:', error)
@@ -46,7 +21,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(swimlanes)
+    return NextResponse.json(swimlanes || [])
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
@@ -58,28 +33,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 401 }
-      )
-    }
-
     const body = await request.json()
     const result = swimlaneSchema.safeParse(body)
     if (!result.success) {
@@ -89,14 +42,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: swimlane, error } = await supabase
-      .from('swimlanes')
-      .insert({
-        ...result.data,
-        user_id: user.id
-      })
-      .select()
-      .single()
+    const { data: swimlane, error } = await db.insert('swimlanes', {
+      ...result.data,
+      user_id: 1 // For now, hardcoded - you'd get this from auth
+    })
 
     if (error) {
       console.error('Error creating swimlane:', error)

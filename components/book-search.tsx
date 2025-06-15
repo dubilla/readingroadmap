@@ -11,6 +11,8 @@ import { Search, Plus } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { searchBooks, getCoverImageUrl, type OpenLibraryBook } from "@/lib/openLibrary";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
 import type { Book } from "@shared/schema";
 
 interface BookSearchProps {
@@ -34,6 +36,8 @@ export function BookSearch({ laneId }: BookSearchProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const debouncedQuery = useDebounce(query, 300);
   const queryClient = useQueryClient();
+  const { isAuthenticated } = useAuth();
+  const router = useRouter();
 
   const addBookMutation = useMutation({
     mutationFn: async (book: SearchResult) => {
@@ -109,6 +113,25 @@ export function BookSearch({ laneId }: BookSearchProps) {
     handleSearch(debouncedQuery);
   }, [debouncedQuery]);
 
+  const handleAddBook = (book: SearchResult) => {
+    if (!isAuthenticated) {
+      // If not authenticated, redirect to sign-up with book data
+      const bookData = encodeURIComponent(JSON.stringify({
+        title: book.title,
+        author: book.author,
+        pages: book.pages,
+        coverUrl: book.coverUrl,
+        status: "to-read",
+        laneId
+      }));
+      router.push(`/auth?book=${bookData}`);
+      setOpen(false);
+    } else {
+      // If authenticated, add the book directly
+      addBookMutation.mutate(book);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -165,7 +188,7 @@ export function BookSearch({ laneId }: BookSearchProps) {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => addBookMutation.mutate(book)}
+                        onClick={() => handleAddBook(book)}
                         disabled={addBookMutation.isPending}
                       >
                         Add

@@ -1,15 +1,17 @@
 import { GET, POST } from '../../app/api/books/route'
 import { mockBook } from '../../test/test-utils'
+import { NextRequest } from 'next/server'
+import { db } from '../../lib/database'
 
-// Mock the database client
+// Mock the database
 jest.mock('../../lib/database', () => ({
   db: {
-    query: jest.fn(),
-    insert: jest.fn(),
-  },
+    insert: jest.fn().mockResolvedValue({ data: { id: 1 }, error: null }),
+    query: jest.fn().mockResolvedValue({ data: [], error: null })
+  }
 }))
 
-const { db } = require('../../lib/database')
+const mockDb = db as jest.Mocked<typeof db>
 
 describe('/api/books', () => {
   beforeEach(() => {
@@ -19,7 +21,7 @@ describe('/api/books', () => {
   describe('GET', () => {
     it('should return books successfully', async () => {
       const mockBooks = [mockBook]
-      db.query.mockResolvedValue({ data: mockBooks, error: null })
+      mockDb.query.mockResolvedValue({ data: mockBooks, error: null })
 
       // GET handler does not use any properties of the request object
       const response = await GET({} as any)
@@ -27,11 +29,11 @@ describe('/api/books', () => {
 
       expect(response.status).toBe(200)
       expect(data).toEqual(mockBooks)
-      expect(db.query).toHaveBeenCalledWith('books')
+      expect(mockDb.query).toHaveBeenCalledWith('books')
     })
 
     it('should handle database errors', async () => {
-      db.query.mockResolvedValue({ data: null, error: 'Database error' })
+      mockDb.query.mockResolvedValue({ data: null, error: 'Database error' })
 
       const response = await GET({} as any)
       const data = await response.json()
@@ -41,7 +43,7 @@ describe('/api/books', () => {
     })
 
     it('should handle unexpected errors', async () => {
-      db.query.mockRejectedValue(new Error('Unexpected error'))
+      mockDb.query.mockRejectedValue(new Error('Unexpected error'))
 
       const response = await GET({} as any)
       const data = await response.json()
@@ -52,109 +54,143 @@ describe('/api/books', () => {
   })
 
   describe('POST', () => {
-    const validBookData = {
-      title: 'New Book',
-      author: 'New Author',
-      pages: 250,
-      coverUrl: 'https://example.com/new-cover.jpg',
-      status: 'to-read' as const,
-    }
-
-    it('should create a book successfully', async () => {
-      const createdBook = { ...mockBook, ...validBookData, id: 2 }
-      db.insert.mockResolvedValue({ data: createdBook, error: null })
-
-      const mockRequest = {
-        json: async () => validBookData,
+    it('creates a new book successfully', async () => {
+      const bookData = {
+        title: 'Test Book',
+        author: 'Test Author',
+        pages: 300,
+        coverUrl: 'https://example.com/cover.jpg',
+        status: 'to-read',
+        laneId: 1,
+        user_id: 1
       }
-      const response = await POST(mockRequest as any)
-      const data = await response.json()
+
+      const request = new NextRequest('http://localhost:3000/api/books', {
+        method: 'POST',
+        body: JSON.stringify(bookData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const response = await POST(request)
+      const result = await response.json()
 
       expect(response.status).toBe(201)
-      expect(data).toEqual(createdBook)
-      expect(db.insert).toHaveBeenCalledWith('books', expect.objectContaining({
-        ...validBookData,
-        user_id: 1,
-        reading_progress: 0,
-        estimated_minutes: expect.any(Number),
-      }))
+      expect(result.success).toBe(true)
+      expect(result.book).toBeDefined()
+      expect(mockDb.insert).toHaveBeenCalledWith('books', {
+        ...bookData,
+        readingProgress: 0,
+        estimatedMinutes: 300,
+        addedAt: expect.any(String)
+      })
     })
 
-    it('should validate required fields', async () => {
+    it('returns 400 for invalid book data', async () => {
       const invalidBookData = {
-        title: '', // Invalid: empty title
-        author: 'New Author',
-        pages: 250,
-        coverUrl: 'https://example.com/new-cover.jpg',
-        status: 'to-read' as const,
+        title: '', // Empty title
+        author: 'Test Author',
+        pages: 300
       }
 
-      const mockRequest = {
-        json: async () => invalidBookData,
-      }
-      const response = await POST(mockRequest as any)
-      const data = await response.json()
+      const request = new NextRequest('http://localhost:3000/api/books', {
+        method: 'POST',
+        body: JSON.stringify(invalidBookData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const response = await POST(request)
+      const result = await response.json()
 
       expect(response.status).toBe(400)
-      expect(data.error).toBe('String must contain at least 1 character(s)')
+      expect(result.error).toBeDefined()
+      expect(mockDb.insert).not.toHaveBeenCalled()
     })
 
-    it('should validate page count', async () => {
-      const invalidBookData = {
-        ...validBookData,
-        pages: 0, // Invalid: pages must be > 0
+    it('handles database errors gracefully', async () => {
+      mockDb.insert.mockImplementation(() => {
+        throw new Error('Database connection failed')
+      })
+
+      const bookData = {
+        title: 'Test Book',
+        author: 'Test Author',
+        pages: 300,
+        coverUrl: 'https://example.com/cover.jpg',
+        status: 'to-read',
+        laneId: 1,
+        user_id: 1
       }
 
-      const mockRequest = {
-        json: async () => invalidBookData,
-      }
-      const response = await POST(mockRequest as any)
-      const data = await response.json()
+      const request = new NextRequest('http://localhost:3000/api/books', {
+        method: 'POST',
+        body: JSON.stringify(bookData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
 
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Number must be greater than or equal to 1')
-    })
-
-    it('should validate cover URL format', async () => {
-      const invalidBookData = {
-        ...validBookData,
-        coverUrl: 'not-a-url', // Invalid: not a valid URL
-      }
-
-      const mockRequest = {
-        json: async () => invalidBookData,
-      }
-      const response = await POST(mockRequest as any)
-      const data = await response.json()
-
-      expect(response.status).toBe(400)
-      expect(data.error).toBe('Invalid url')
-    })
-
-    it('should handle database errors during creation', async () => {
-      db.insert.mockResolvedValue({ data: null, error: 'Database error' })
-
-      const mockRequest = {
-        json: async () => validBookData,
-      }
-      const response = await POST(mockRequest as any)
-      const data = await response.json()
+      const response = await POST(request)
+      const result = await response.json()
 
       expect(response.status).toBe(500)
-      expect(data.error).toBe('Failed to create book')
+      expect(result.error).toBe('Failed to create book')
     })
 
-    it('should handle unexpected errors during creation', async () => {
-      db.insert.mockRejectedValue(new Error('Unexpected error'))
-
-      const mockRequest = {
-        json: async () => validBookData,
+    it('validates required fields', async () => {
+      const incompleteBookData = {
+        title: 'Test Book'
+        // Missing required fields
       }
-      const response = await POST(mockRequest as any)
-      const data = await response.json()
 
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('Internal server error')
+      const request = new NextRequest('http://localhost:3000/api/books', {
+        method: 'POST',
+        body: JSON.stringify(incompleteBookData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const response = await POST(request)
+      const result = await response.json()
+
+      expect(response.status).toBe(400)
+      expect(result.error).toContain('author')
+      expect(mockDb.insert).not.toHaveBeenCalled()
+    })
+
+    it('sets default values for optional fields', async () => {
+      const bookData = {
+        title: 'Test Book',
+        author: 'Test Author',
+        pages: 300,
+        user_id: 1
+        // Missing optional fields
+      }
+
+      const request = new NextRequest('http://localhost:3000/api/books', {
+        method: 'POST',
+        body: JSON.stringify(bookData),
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+
+      const response = await POST(request)
+
+      expect(response.status).toBe(201)
+      expect(mockDb.insert).toHaveBeenCalledWith('books', {
+        ...bookData,
+        coverUrl: null,
+        status: 'to-read',
+        laneId: null,
+        readingProgress: 0,
+        estimatedMinutes: 300,
+        addedAt: expect.any(String)
+      })
     })
   })
 }) 

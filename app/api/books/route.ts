@@ -51,9 +51,21 @@ export async function POST(request: NextRequest) {
       (bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.AVERAGE
     )
 
+    // For now, we'll use a simple approach - in production you'd want proper auth
+    // The user_id should come from the authenticated user
+    const { data: users } = await db.query('users')
+    if (!users || users.length === 0) {
+      return NextResponse.json(
+        { error: 'No users found. Please create an account first.' },
+        { status: 401 }
+      )
+    }
+
+    const userId = users[0].id // Use the first user for now
+
     const { data: book, error } = await db.insert('books', {
       ...bookData,
-      user_id: 1, // For now, hardcoded - you'd get this from auth
+      user_id: userId,
       reading_progress: 0,
       estimated_minutes: estimatedMinutes
     })

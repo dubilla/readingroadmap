@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  login: (user: User) => void;
   logout: () => void;
 }
 
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   isLoading: true,
   isAuthenticated: false,
+  login: () => {},
   logout: () => {},
 });
 
@@ -28,6 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const router = useRouter();
   const queryClient = useQueryClient();
+  
+  // Login function
+  const login = (userData: User) => {
+    setUser(userData);
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+  };
   
   // Query to get current user
   const { isLoading, error } = useQuery({
@@ -73,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     isLoading,
     isAuthenticated: !!user,
+    login,
     logout,
   };
   

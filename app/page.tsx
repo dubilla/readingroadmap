@@ -6,7 +6,6 @@ import { ReadingBoard } from "../components/reading-board"
 import { Card, CardContent } from "../components/ui/card"
 import { Skeleton } from "../components/ui/skeleton"
 import { Button } from "../components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../components/ui/dialog"
 import { BookSearch } from "../components/book-search"
 import { NavHeader } from "../components/nav-header"
 import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp } from "lucide-react"
@@ -25,8 +24,8 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const isLoading = booksLoading || lanesLoading
   
-  const backlogLane = lanes?.find(lane => lane.type === "backlog" && !lane.swimlaneId)
-  const inProgressLane = lanes?.find(lane => lane.type === "in-progress" && !lane.swimlaneId)
+  const backlogLane = lanes?.find(lane => lane.type === "backlog")
+  const inProgressLane = lanes?.find(lane => lane.type === "in-progress")
   const completedLane = lanes?.find(lane => lane.type === "completed" && !lane.swimlaneId)
   
   const backlogCount = books?.filter(book => book.laneId === backlogLane?.id).length || 0
@@ -90,20 +89,7 @@ export default function HomePage() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-semibold">Recently Added</h3>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <BookIcon className="h-4 w-4 mr-2" />
-                Add New Book
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add Book to Your Library</DialogTitle>
-              </DialogHeader>
-              {backlogLane && <BookSearch laneId={backlogLane.id} />}
-            </DialogContent>
-          </Dialog>
+          {backlogLane && <BookSearch laneId={backlogLane.id} />}
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
