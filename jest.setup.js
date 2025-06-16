@@ -1,10 +1,57 @@
 import '@testing-library/jest-dom'
 import React from 'react'
 
+// Mock Supabase
+jest.mock('@supabase/supabase-js', () => ({
+  createClient: jest.fn(() => ({
+    auth: {
+      signInWithPassword: jest.fn(() => Promise.resolve({ data: { user: null, session: null }, error: null })),
+      signUp: jest.fn(() => Promise.resolve({ data: { user: null, session: null }, error: null })),
+      signOut: jest.fn(() => Promise.resolve({ error: null })),
+      getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null })),
+      onAuthStateChange: jest.fn(() => ({
+        data: { subscription: { unsubscribe: jest.fn() } }
+      }))
+    },
+    from: jest.fn(() => ({
+      select: jest.fn(),
+      insert: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      eq: jest.fn(),
+      order: jest.fn(),
+      single: jest.fn(),
+      limit: jest.fn()
+    }))
+  }))
+}))
+
+jest.mock('@supabase/ssr', () => ({
+  createServerClient: jest.fn(() => ({
+    auth: {
+      getSession: jest.fn(() => Promise.resolve({ data: { session: null }, error: null }))
+    },
+    from: jest.fn(() => ({
+      select: jest.fn(),
+      insert: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      eq: jest.fn(),
+      order: jest.fn(),
+      single: jest.fn(),
+      limit: jest.fn()
+    }))
+  }))
+}))
+
 // Simple Request polyfill for Next.js API route tests
 global.Request = class Request {
   constructor(url, options = {}) {
-    this.url = url
+    Object.defineProperty(this, 'url', {
+      value: url,
+      writable: false,
+      configurable: true
+    })
     this.method = options.method || 'GET'
     this.body = options.body
     this.headers = new Map(Object.entries(options.headers || {}))

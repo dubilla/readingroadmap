@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../../lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
 
 const updateBookSchema = z.object({
@@ -17,24 +17,31 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
         { status: 401 }
       )
     }
@@ -43,7 +50,7 @@ export async function GET(
       .from('books')
       .select('*')
       .eq('id', params.id)
-      .eq('user_id', user.id)
+      .eq('user_id', session.user.id)
       .single()
 
     if (error) {
@@ -75,24 +82,31 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
         { status: 401 }
       )
     }
@@ -116,7 +130,7 @@ export async function PUT(
       .from('books')
       .update(updateData)
       .eq('id', params.id)
-      .eq('user_id', user.id)
+      .eq('user_id', session.user.id)
       .select()
       .single()
 
@@ -149,24 +163,31 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
         { status: 401 }
       )
     }
@@ -175,7 +196,7 @@ export async function DELETE(
       .from('books')
       .delete()
       .eq('id', params.id)
-      .eq('user_id', user.id)
+      .eq('user_id', session.user.id)
 
     if (error) {
       console.error('Error deleting book:', error)

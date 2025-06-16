@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '../../../lib/database'
+import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
 
 const laneSchema = z.object({
@@ -12,22 +12,39 @@ const laneSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if we're in local development mode
-    if (db.isLocalDb()) {
-      // Skip auth for local development
-    } else {
-      // For production, use Supabase auth
-      const { supabase } = await import('../../../lib/supabase')
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        return NextResponse.json(
-          { error: 'Not authenticated' },
-          { status: 401 }
-        )
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
       }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
     }
 
-    const { data: lanes, error } = await db.query('lanes')
+    const { data: lanes, error } = await supabase
+      .from('lanes')
+      .select('*')
+      .order('order', { ascending: true })
 
     if (error) {
       console.error('Error fetching lanes:', error)
@@ -49,19 +66,33 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if we're in local development mode
-    if (db.isLocalDb()) {
-      // Skip auth for local development
-    } else {
-      // For production, use Supabase auth
-      const { supabase } = await import('../../../lib/supabase')
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        return NextResponse.json(
-          { error: 'Not authenticated' },
-          { status: 401 }
-        )
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
       }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
@@ -73,7 +104,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: lane, error } = await db.insert('lanes', result.data)
+    const laneData = result.data
+    const { data: lane, error } = await supabase
+      .from('lanes')
+      .insert({
+        name: laneData.name,
+        description: laneData.description,
+        order: laneData.order,
+        type: laneData.type,
+        swimlane_id: laneData.swimlaneId
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error('Error creating lane:', error)

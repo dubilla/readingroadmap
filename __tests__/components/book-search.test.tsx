@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation'
 
 // Mock the auth context and router
 jest.mock('../../contexts/auth-context')
-jest.mock('next/navigation')
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn()
+}))
 jest.mock('../../lib/openLibrary', () => ({
   searchBooks: jest.fn(),
   getCoverImageUrl: jest.fn((id) => `https://covers.openlibrary.org/b/id/${id}-L.jpg`)
 }))
-
-// Mock the API request function
 jest.mock('../../lib/queryClient', () => ({
   apiRequest: jest.fn()
 }))
@@ -33,9 +33,9 @@ describe('BookSearch', () => {
   }
 
   const mockAuthContext = {
-    isAuthenticated: false,
-    user: null,
+    user: { id: 1, email: 'test@example.com', name: 'Test User' },
     isLoading: false,
+    isAuthenticated: true,
     login: jest.fn(),
     logout: jest.fn()
   }
@@ -48,6 +48,7 @@ describe('BookSearch', () => {
     // Mock successful API responses
     global.fetch = jest.fn(() =>
       Promise.resolve({
+        ok: true,
         json: () => Promise.resolve([])
       })
     ) as jest.Mock

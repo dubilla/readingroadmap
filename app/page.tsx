@@ -3,27 +3,124 @@
 import React, { useState } from 'react'
 import { useQuery } from "@tanstack/react-query"
 import { ReadingBoard } from "../components/reading-board"
-import { Card, CardContent } from "../components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
 import { Skeleton } from "../components/ui/skeleton"
 import { Button } from "../components/ui/button"
 import { BookSearch } from "../components/book-search"
 import { NavHeader } from "../components/nav-header"
-import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp } from "lucide-react"
+import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, ArrowRight, BookMarked } from "lucide-react"
 import type { Book, Lane } from "../shared/schema"
 import { useAuth } from "../contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function HomePage() {
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
+  const router = useRouter()
+  
   const { data: books, isLoading: booksLoading } = useQuery<Book[]>({
-    queryKey: ["/api/books"]
+    queryKey: ["/api/books"],
+    enabled: isAuthenticated // Only fetch if authenticated
   })
   
   const { data: lanes, isLoading: lanesLoading } = useQuery<Lane[]>({
-    queryKey: ["/api/lanes"]
+    queryKey: ["/api/lanes"],
+    enabled: isAuthenticated // Only fetch if authenticated
   })
   
   const [activeTab, setActiveTab] = useState("dashboard")
-  const isLoading = booksLoading || lanesLoading
+  const isLoading = authLoading || (isAuthenticated && (booksLoading || lanesLoading))
   
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <NavHeader />
+        <main className="flex-1 p-4 md:p-8">
+          <div className="max-w-7xl mx-auto space-y-8">
+            <Skeleton className="h-12 w-64" />
+            <Skeleton className="h-4 w-96" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[...Array(4)].map((_, i) => (
+                <Skeleton key={i} className="h-32" />
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Show welcome screen for unauthenticated users
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col">
+        <NavHeader />
+        <main className="flex-1 flex items-center justify-center p-4">
+          <div className="max-w-2xl mx-auto text-center space-y-8">
+            <div className="space-y-4">
+              <div className="flex justify-center">
+                <div className="p-4 bg-primary/10 rounded-full">
+                  <BookMarked className="h-16 w-16 text-primary" />
+                </div>
+              </div>
+              <h1 className="text-4xl font-bold tracking-tight">Welcome to Reading Roadmap</h1>
+              <p className="text-xl text-muted-foreground">
+                Organize your reading journey, track your progress, and discover new books
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+              <Card className="text-center">
+                <CardContent className="p-6">
+                  <BookOpen className="h-8 w-8 mx-auto mb-3 text-blue-600" />
+                  <h3 className="font-semibold mb-2">Track Your Reading</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Keep track of what you're reading and your progress
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="text-center">
+                <CardContent className="p-6">
+                  <Library className="h-8 w-8 mx-auto mb-3 text-green-600" />
+                  <h3 className="font-semibold mb-2">Discover Books</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Find new books to read from Open Library
+                  </p>
+                </CardContent>
+              </Card>
+              
+              <Card className="text-center">
+                <CardContent className="p-6">
+                  <TrendingUp className="h-8 w-8 mx-auto mb-3 text-purple-600" />
+                  <h3 className="font-semibold mb-2">Visualize Progress</h3>
+                  <p className="text-sm text-muted-foreground">
+                    See your reading journey with beautiful visual boards
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="space-y-4">
+              <Button 
+                size="lg" 
+                onClick={() => router.push('/auth')}
+                className="px-8"
+              >
+                Get Started
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Create an account to start organizing your reading journey
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Show dashboard for authenticated users
   const backlogLane = lanes?.find(lane => lane.type === "backlog")
   const inProgressLane = lanes?.find(lane => lane.type === "in-progress")
   const completedLane = lanes?.find(lane => lane.type === "completed" && !lane.swimlaneId)
@@ -32,10 +129,6 @@ export default function HomePage() {
   const inProgressCount = books?.filter(book => book.laneId === inProgressLane?.id).length || 0
   const completedCount = books?.filter(book => book.laneId === completedLane?.id).length || 0
   const totalBooks = books?.length || 0
-  
-  if (isLoading) {
-    return <Skeleton className="w-full h-screen" />
-  }
 
   const renderDashboard = () => (
     <div className="space-y-6">
@@ -92,23 +185,36 @@ export default function HomePage() {
           {backlogLane && <BookSearch laneId={backlogLane.id} />}
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {books?.slice(-4).reverse().map(book => (
-            <Card key={book.id} className="overflow-hidden">
-              <div className="aspect-[3/4] relative">
-                <img
-                  src={book.coverUrl}
-                  alt={book.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              </div>
-              <CardContent className="p-4">
-                <h4 className="font-semibold line-clamp-1">{book.title}</h4>
-                <p className="text-sm text-muted-foreground line-clamp-1">{book.author}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        {books && books.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {books.slice(-4).reverse().map(book => (
+              <Card key={book.id} className="overflow-hidden">
+                <div className="aspect-[3/4] relative">
+                  <img
+                    src={book.coverUrl}
+                    alt={book.title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                </div>
+                <CardContent className="p-4">
+                  <h4 className="font-semibold line-clamp-1">{book.title}</h4>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{book.author}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="p-8 text-center">
+              <BookIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-semibold mb-2">No books yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Start building your reading roadmap by adding your first book
+              </p>
+              {backlogLane && <BookSearch laneId={backlogLane.id} />}
+            </CardContent>
+          </Card>
+        )}
       </div>
       
       {/* Quick Links */}
@@ -143,34 +249,34 @@ export default function HomePage() {
           <header className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">Reading Roadmap</h1>
             <p className="text-muted-foreground">
-              Organize and track your reading journey
+              Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Here's your reading journey
             </p>
           </header>
 
-        <div className="flex border-b mb-6">
-          <button
-            className={`px-4 py-2 font-medium ${activeTab === "dashboard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
-            onClick={() => setActiveTab("dashboard")}
-          >
-            Dashboard
-          </button>
-          <button
-            className={`px-4 py-2 font-medium ${activeTab === "readingBoard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
-            onClick={() => setActiveTab("readingBoard")}
-          >
-            Reading Board
-          </button>
-        </div>
+          <div className="flex border-b mb-6">
+            <button
+              className={`px-4 py-2 font-medium ${activeTab === "dashboard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+              onClick={() => setActiveTab("dashboard")}
+            >
+              Dashboard
+            </button>
+            <button
+              className={`px-4 py-2 font-medium ${activeTab === "readingBoard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+              onClick={() => setActiveTab("readingBoard")}
+            >
+              Reading Board
+            </button>
+          </div>
 
-        {activeTab === "dashboard" ? (
-          renderDashboard()
-        ) : (
-          <Card>
-            <CardContent className="p-6">
-              <ReadingBoard books={books || []} />
-            </CardContent>
-          </Card>
-        )}
+          {activeTab === "dashboard" ? (
+            renderDashboard()
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <ReadingBoard books={books || []} />
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>

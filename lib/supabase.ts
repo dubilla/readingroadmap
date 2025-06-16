@@ -1,59 +1,43 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY!
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Client-side Supabase client (for React components)
+export const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
+    }
+  }
+)
 
 // Database types based on your schema
 export interface Database {
   public: {
     Tables: {
-      users: {
-        Row: {
-          id: number
-          email: string
-          hashed_password: string
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          email: string
-          hashed_password: string
-          created_at?: string
-        }
-        Update: {
-          id?: number
-          email?: string
-          hashed_password?: string
-          created_at?: string
-        }
-      }
       swimlanes: {
         Row: {
           id: number
           name: string
           description: string | null
           order: number
-          user_id: number | null
+          user_id: string | null // UUID from auth.users
         }
         Insert: {
           id?: number
           name: string
           description?: string | null
           order: number
-          user_id?: number | null
+          user_id?: string | null
         }
         Update: {
           id?: number
           name?: string
           description?: string | null
           order?: number
-          user_id?: number | null
+          user_id?: string | null
         }
       }
       lanes: {
@@ -90,7 +74,7 @@ export interface Database {
           pages: number
           cover_url: string
           status: string
-          user_id: number
+          user_id: string // UUID from auth.users
           lane_id: number | null
           reading_progress: number
           goodreads_id: string | null
@@ -104,7 +88,7 @@ export interface Database {
           pages: number
           cover_url: string
           status: string
-          user_id: number
+          user_id: string
           lane_id?: number | null
           reading_progress?: number
           goodreads_id?: string | null
@@ -118,7 +102,7 @@ export interface Database {
           pages?: number
           cover_url?: string
           status?: string
-          user_id?: number
+          user_id?: string
           lane_id?: number | null
           reading_progress?: number
           goodreads_id?: string | null

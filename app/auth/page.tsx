@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -9,9 +9,8 @@ import { Input } from '../../components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../../components/ui/form'
 import { useToast } from '../../hooks/use-toast'
-import { apiRequest } from '../../lib/queryClient'
 import { useAuth } from '../../contexts/auth-context'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 // Auth schemas
 const loginSchema = z.object({
@@ -20,7 +19,6 @@ const loginSchema = z.object({
 })
 
 const registerSchema = z.object({
-  name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters")
 })
@@ -29,8 +27,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const { login } = useAuth()
-  const router = useRouter()
+  const { signIn, signUp } = useAuth()
   const searchParams = useSearchParams()
   const bookDataParam = searchParams.get('book')
 
@@ -48,51 +45,22 @@ export default function AuthPage() {
   const registerForm = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      name: "",
       email: "",
       password: ""
-    }
+    },
+    mode: "onChange",
+    reValidateMode: "onChange"
   })
-
-  const addBookAfterAuth = async (user: any) => {
-    if (bookData) {
-      try {
-        await apiRequest("POST", "/api/books", {
-          ...bookData,
-          user_id: user.id
-        })
-        toast({
-          title: "Book Added!",
-          description: `${bookData.title} has been added to your reading roadmap`,
-        })
-      } catch (error) {
-        console.error('Error adding book after auth:', error)
-        toast({
-          title: "Book Added",
-          description: "Account created successfully, but there was an issue adding the book. You can add it manually later.",
-        })
-      }
-    }
-  }
 
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true)
     try {
-      const response = await apiRequest("POST", "/api/auth/login", data)
-      const result = await response.json()
+      const result = await signIn(data.email, data.password)
       
-      if (response.ok) {
-        login(result.user)
-        await addBookAfterAuth(result.user)
-        toast({
-          title: "Success",
-          description: "Logged in successfully",
-        })
-        router.push('/')
-      } else {
+      if (result.error) {
         toast({
           title: "Error",
-          description: result.error || "Invalid email or password",
+          description: result.error,
           variant: "destructive",
         })
       }
@@ -110,21 +78,12 @@ export default function AuthPage() {
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
     setIsLoading(true)
     try {
-      const response = await apiRequest("POST", "/api/auth/register", data)
-      const result = await response.json()
+      const result = await signUp(data.email, data.password)
       
-      if (response.ok) {
-        login(result.user)
-        await addBookAfterAuth(result.user)
-        toast({
-          title: "Success",
-          description: "Account created successfully",
-        })
-        router.push('/')
-      } else {
+      if (result.error) {
         toast({
           title: "Error",
-          description: result.error || "Registration failed",
+          description: result.error,
           variant: "destructive",
         })
       }
@@ -196,52 +155,36 @@ export default function AuthPage() {
               </form>
             </Form>
           ) : (
-            <Form {...registerForm}>
-              <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
-                <FormField
-                  control={registerForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Name</FormLabel>
-                      <FormControl>
-                        <Input type="text" placeholder="Enter your name" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Email</label>
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  {...registerForm.register('email')}
+                  className="w-full p-2 border rounded"
                 />
-                <FormField
-                  control={registerForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="Enter your email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                {registerForm.formState.errors.email && (
+                  <p className="text-sm text-red-500 mt-1">{registerForm.formState.errors.email.message}</p>
+                )}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Password</label>
+                <input
+                  type="password"
+                  {...registerForm.register('password')}
+                  className="w-full p-2 border rounded"
                 />
-                <FormField
-                  control={registerForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Creating account..." : "Create Account"}
-                </Button>
-              </form>
-            </Form>
+                {registerForm.formState.errors.password && (
+                  <p className="text-sm text-red-500 mt-1">{registerForm.formState.errors.password.message}</p>
+                )}
+              </div>
+              
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating account..." : "Create Account"}
+              </Button>
+            </form>
           )}
           
           <div className="mt-4 text-center">

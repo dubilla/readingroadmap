@@ -1,26 +1,20 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '../../test/test-utils'
 import { AuthProvider, useAuth } from '../../contexts/auth-context'
-import { apiRequest } from '../../lib/queryClient'
-
-// Mock the API request function
-jest.mock('../../lib/queryClient', () => ({
-  apiRequest: jest.fn()
-}))
-
-const mockApiRequest = apiRequest as jest.MockedFunction<typeof apiRequest>
+import { supabase } from '../../lib/supabase'
 
 // Test component to access auth context
 const TestComponent = () => {
-  const { user, isAuthenticated, isLoading, login, logout } = useAuth()
+  const { user, isAuthenticated, isLoading, signIn, signUp, signOut } = useAuth()
   
   return (
     <div>
-      <div data-testid="user">{user ? user.name : 'No user'}</div>
+      <div data-testid="user">{user ? user.email : 'No user'}</div>
       <div data-testid="authenticated">{isAuthenticated ? 'true' : 'false'}</div>
       <div data-testid="loading">{isLoading ? 'true' : 'false'}</div>
-      <button onClick={() => login('test@example.com', 'password')}>Login</button>
-      <button onClick={logout}>Logout</button>
+      <button onClick={() => signIn('test@example.com', 'password123')}>Sign In</button>
+      <button onClick={() => signUp('test@example.com', 'password123')}>Sign Up</button>
+      <button onClick={() => signOut()}>Sign Out</button>
     </div>
   )
 }
@@ -28,8 +22,6 @@ const TestComponent = () => {
 describe('AuthContext', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    // Clear localStorage
-    localStorage.clear()
   })
 
   it('provides initial unauthenticated state', () => {
@@ -41,14 +33,38 @@ describe('AuthContext', () => {
 
     expect(screen.getByTestId('user')).toHaveTextContent('No user')
     expect(screen.getByTestId('authenticated')).toHaveTextContent('false')
-    expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    expect(screen.getByTestId('loading')).toHaveTextContent('true')
   })
 
-  it('handles successful login', async () => {
-    const mockUser = { id: 1, email: 'test@example.com', name: 'Test User' }
-    mockApiRequest.mockResolvedValue({ 
-      ok: true, 
-      json: () => Promise.resolve({ user: mockUser }) 
+  it('renders auth buttons', () => {
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    )
+
+    expect(screen.getByText('Sign In')).toBeInTheDocument()
+    expect(screen.getByText('Sign Up')).toBeInTheDocument()
+    expect(screen.getByText('Sign Out')).toBeInTheDocument()
+  })
+
+  it('shows loading state initially', () => {
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    )
+
+    expect(screen.getByTestId('loading')).toHaveTextContent('true')
+  })
+
+  it('handles successful sign in', async () => {
+    const mockUser = { id: 'test-user-id', email: 'test@example.com' }
+    
+    // Override the global mock for this test
+    ;(supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+      data: { user: mockUser, session: { user: mockUser } },
+      error: null
     })
 
     render(
@@ -57,27 +73,113 @@ describe('AuthContext', () => {
       </AuthProvider>
     )
 
-    const loginButton = screen.getByText('Login')
-    fireEvent.click(loginButton)
+    // Wait for initial load to complete
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+
+    const signInButton = screen.getByText('Sign In')
+    fireEvent.click(signInButton)
 
     await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/auth/login', {
+      expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
         email: 'test@example.com',
-        password: 'password'
+        password: 'password123'
       })
+    })
+  })
+
+  it('handles sign in errors', async () => {
+    // Override the global mock for this test
+    ;(supabase.auth.signInWithPassword as jest.Mock).mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Invalid credentials' }
+    })
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    )
+
+    // Wait for initial load to complete
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+
+    const signInButton = screen.getByText('Sign In')
+    fireEvent.click(signInButton)
+
+    await waitFor(() => {
+      expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123'
+      })
+    })
+  })
+
+  it('handles sign out', async () => {
+    const mockUser = { id: 'test-user-id', email: 'test@example.com' }
+    
+    // Override the global mock for this test
+    ;(supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { user: mockUser } },
+      error: null
+    })
+
+    ;(supabase.auth.signOut as jest.Mock).mockResolvedValue({
+      error: null
+    })
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    )
+
+    // Wait for initial load to complete
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
     })
 
     await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('Test User')
+      expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
+      expect(screen.getByTestId('authenticated')).toHaveTextContent('true')
+    })
+
+    // Then sign out
+    const signOutButton = screen.getByText('Sign Out')
+    fireEvent.click(signOutButton)
+
+    await waitFor(() => {
+      expect(supabase.auth.signOut).toHaveBeenCalled()
+    })
+  })
+
+  it('loads user from session on mount', async () => {
+    const mockUser = { id: 'test-user-id', email: 'test@example.com' }
+
+    // Override the global mock for this test
+    ;(supabase.auth.getSession as jest.Mock).mockResolvedValue({
+      data: { session: { user: mockUser } },
+      error: null
+    })
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user')).toHaveTextContent('test@example.com')
       expect(screen.getByTestId('authenticated')).toHaveTextContent('true')
     })
   })
 
-  it('handles login errors', async () => {
-    mockApiRequest.mockResolvedValue({ 
-      ok: false, 
-      json: () => Promise.resolve({ error: 'Invalid credentials' }) 
-    })
+  it('handles network errors during sign in', async () => {
+    // Override the global mock for this test
+    ;(supabase.auth.signInWithPassword as jest.Mock).mockRejectedValue(new Error('Network error'))
 
     render(
       <AuthProvider>
@@ -85,87 +187,19 @@ describe('AuthContext', () => {
       </AuthProvider>
     )
 
-    const loginButton = screen.getByText('Login')
-    fireEvent.click(loginButton)
+    // Wait for initial load to complete
+    await waitFor(() => {
+      expect(screen.getByTestId('loading')).toHaveTextContent('false')
+    })
+
+    const signInButton = screen.getByText('Sign In')
+    fireEvent.click(signInButton)
 
     await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/auth/login', {
+      expect(supabase.auth.signInWithPassword).toHaveBeenCalledWith({
         email: 'test@example.com',
-        password: 'password'
+        password: 'password123'
       })
     })
-
-    // Should remain unauthenticated
-    expect(screen.getByTestId('user')).toHaveTextContent('No user')
-    expect(screen.getByTestId('authenticated')).toHaveTextContent('false')
-  })
-
-  it('handles logout', async () => {
-    // First login
-    const mockUser = { id: 1, email: 'test@example.com', name: 'Test User' }
-    mockApiRequest.mockResolvedValue({ 
-      ok: true, 
-      json: () => Promise.resolve({ user: mockUser }) 
-    })
-
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    )
-
-    const loginButton = screen.getByText('Login')
-    fireEvent.click(loginButton)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('true')
-    })
-
-    // Then logout
-    const logoutButton = screen.getByText('Logout')
-    fireEvent.click(logoutButton)
-
-    await waitFor(() => {
-      expect(screen.getByTestId('user')).toHaveTextContent('No user')
-      expect(screen.getByTestId('authenticated')).toHaveTextContent('false')
-    })
-  })
-
-  it('loads user from localStorage on mount', () => {
-    const mockUser = { id: 1, email: 'test@example.com', name: 'Test User' }
-    localStorage.setItem('user', JSON.stringify(mockUser))
-
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    )
-
-    expect(screen.getByTestId('user')).toHaveTextContent('Test User')
-    expect(screen.getByTestId('authenticated')).toHaveTextContent('true')
-  })
-
-  it('handles network errors during login', async () => {
-    mockApiRequest.mockRejectedValue(new Error('Network error'))
-
-    render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
-    )
-
-    const loginButton = screen.getByText('Login')
-    fireEvent.click(loginButton)
-
-    await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/auth/login', {
-        email: 'test@example.com',
-        password: 'password'
-      })
-    })
-
-    // Should remain unauthenticated
-    expect(screen.getByTestId('user')).toHaveTextContent('No user')
-    expect(screen.getByTestId('authenticated')).toHaveTextContent('false')
   })
 }) 

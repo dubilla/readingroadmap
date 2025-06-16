@@ -2,199 +2,112 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor } from '../../test/test-utils'
 import AuthPage from '../../app/auth/page'
 import { useAuth } from '../../contexts/auth-context'
-import { useRouter, useSearchParams } from 'next/navigation'
 
 // Mock the auth context and router
 jest.mock('../../contexts/auth-context')
-jest.mock('next/navigation')
-jest.mock('../../lib/queryClient', () => ({
-  apiRequest: jest.fn()
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn(),
+  useSearchParams: jest.fn()
 }))
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>
-const mockUseRouter = useRouter as jest.MockedFunction<typeof useRouter>
-const mockUseSearchParams = useSearchParams as jest.MockedFunction<typeof useSearchParams>
-const mockApiRequest = require('../../lib/queryClient').apiRequest as jest.MockedFunction<any>
 
-describe('AuthPage', () => {
-  const mockRouter = {
-    push: jest.fn(),
-    back: jest.fn(),
-    forward: jest.fn(),
-    refresh: jest.fn(),
-    replace: jest.fn(),
-    prefetch: jest.fn()
+// Error boundary to catch rendering errors
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error?: Error }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props)
+    this.state = { hasError: false }
   }
 
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return <div>Error: {this.state.error?.message}</div>
+    }
+    return this.props.children
+  }
+}
+
+describe('AuthPage', () => {
   const mockAuthContext = {
     user: null,
     isLoading: false,
     isAuthenticated: false,
-    login: jest.fn(),
-    logout: jest.fn()
+    signIn: jest.fn(),
+    signUp: jest.fn(),
+    signOut: jest.fn()
   }
 
   beforeEach(() => {
     jest.clearAllMocks()
     mockUseAuth.mockReturnValue(mockAuthContext)
-    mockUseRouter.mockReturnValue(mockRouter)
-    mockUseSearchParams.mockReturnValue({
-      get: jest.fn().mockReturnValue(null),
-      has: jest.fn().mockReturnValue(false),
-      getAll: jest.fn().mockReturnValue([]),
-      forEach: jest.fn(),
-      entries: jest.fn().mockReturnValue([]),
-      keys: jest.fn().mockReturnValue([]),
-      values: jest.fn().mockReturnValue([]),
-      toString: jest.fn().mockReturnValue(''),
-      size: 0
-    })
   })
 
-  it('renders login form by default', () => {
-    render(<AuthPage />)
+  it('renders login form by default', async () => {
+    render(
+      <ErrorBoundary>
+        <AuthPage />
+      </ErrorBoundary>
+    )
     
-    expect(screen.getByText('Sign In')).toBeTruthy()
-    expect(screen.getByLabelText('Email')).toBeTruthy()
-    expect(screen.getByLabelText('Password')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeTruthy()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
   })
 
-  it('switches to register form when sign up link is clicked', () => {
+  it('switches to register form when clicked', async () => {
     render(<AuthPage />)
     
     const signUpLink = screen.getByText('Don\'t have an account? Sign up')
     fireEvent.click(signUpLink)
     
-    expect(screen.getByText('Create Account')).toBeTruthy()
-    expect(screen.getByLabelText('Name')).toBeTruthy()
-    expect(screen.getByLabelText('Email')).toBeTruthy()
-    expect(screen.getByLabelText('Password')).toBeTruthy()
-    expect(screen.getByRole('button', { name: /create account/i })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Create Account' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /create account/i })).toBeInTheDocument()
   })
 
-  it('shows book information when book data is in URL params', () => {
-    const bookData = {
-      title: 'Test Book',
-      author: 'Test Author',
-      pages: 300,
-      coverUrl: 'https://example.com/cover.jpg',
-      status: 'to-read',
-      laneId: 1
-    }
-    
-    const searchParams = new URLSearchParams()
-    searchParams.set('book', encodeURIComponent(JSON.stringify(bookData)))
-    mockUseSearchParams.mockReturnValue(searchParams)
-
+  it('switches back to login form when clicked', async () => {
     render(<AuthPage />)
     
-    expect(screen.getByText(/Test Book.*will be added to your reading roadmap/i)).toBeTruthy()
-  })
-
-  it('handles successful registration and adds book', async () => {
-    const bookData = {
-      title: 'Test Book',
-      author: 'Test Author',
-      pages: 300,
-      coverUrl: 'https://example.com/cover.jpg',
-      status: 'to-read',
-      laneId: 1
-    }
-    
-    const searchParams = new URLSearchParams()
-    searchParams.set('book', encodeURIComponent(JSON.stringify(bookData)))
-    mockUseSearchParams.mockReturnValue(searchParams)
-
-    const mockUser = { id: 1, email: 'test@example.com', name: 'Test User' }
-    mockApiRequest
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ user: mockUser }) }) // Register
-      .mockResolvedValueOnce({ ok: true }) // Add book
-
-    render(<AuthPage />)
-    
-    // Switch to register form
+    // Switch to register first
     const signUpLink = screen.getByText('Don\'t have an account? Sign up')
     fireEvent.click(signUpLink)
     
-    // Fill out form
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Test User' } })
-    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } })
-    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    // Switch back to login
+    const signInLink = screen.getByText('Already have an account? Sign in')
+    fireEvent.click(signInLink)
     
-    // Submit form
-    const submitButton = screen.getByRole('button', { name: /create account/i })
-    fireEvent.click(submitButton)
-    
-    await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/auth/register', {
-        name: 'Test User',
-        email: 'test@example.com',
-        password: 'password123'
-      })
-    })
-    
-    await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/books', {
-        ...bookData,
-        user_id: 1
-      })
-    })
-    
-    expect(mockRouter.push).toHaveBeenCalledWith('/')
+    expect(screen.getByRole('heading', { name: 'Sign In' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument()
   })
 
-  it('handles successful login and adds book', async () => {
-    const bookData = {
-      title: 'Test Book',
-      author: 'Test Author',
-      pages: 300,
-      coverUrl: 'https://example.com/cover.jpg',
-      status: 'to-read',
-      laneId: 1
-    }
-    
-    const searchParams = new URLSearchParams()
-    searchParams.set('book', encodeURIComponent(JSON.stringify(bookData)))
-    mockUseSearchParams.mockReturnValue(searchParams)
-
-    const mockUser = { id: 1, email: 'test@example.com', name: 'Test User' }
-    mockApiRequest
-      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ user: mockUser }) }) // Login
-      .mockResolvedValueOnce({ ok: true }) // Add book
+  it('handles login form submission', async () => {
+    mockAuthContext.signIn.mockResolvedValue({})
 
     render(<AuthPage />)
     
-    // Fill out login form
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
     
-    // Submit form
     const submitButton = screen.getByRole('button', { name: /sign in/i })
     fireEvent.click(submitButton)
     
     await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/auth/login', {
-        email: 'test@example.com',
-        password: 'password123'
-      })
+      expect(mockAuthContext.signIn).toHaveBeenCalledWith('test@example.com', 'password123')
     })
-    
-    await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/books', {
-        ...bookData,
-        user_id: 1
-      })
-    })
-    
-    expect(mockRouter.push).toHaveBeenCalledWith('/')
   })
 
-  it('handles registration errors gracefully', async () => {
-    mockApiRequest.mockResolvedValue({ 
-      ok: false, 
-      json: () => Promise.resolve({ error: 'Email already exists' }) 
-    })
+  it('handles register form submission', async () => {
+    mockAuthContext.signUp.mockResolvedValue({})
 
     render(<AuthPage />)
     
@@ -202,25 +115,51 @@ describe('AuthPage', () => {
     const signUpLink = screen.getByText('Don\'t have an account? Sign up')
     fireEvent.click(signUpLink)
     
-    // Fill out form
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Test User' } })
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } })
     fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
     
-    // Submit form
     const submitButton = screen.getByRole('button', { name: /create account/i })
     fireEvent.click(submitButton)
     
     await waitFor(() => {
-      expect(mockApiRequest).toHaveBeenCalledWith('POST', '/api/auth/register', {
-        name: 'Test User',
-        email: 'test@example.com',
-        password: 'password123'
-      })
+      expect(mockAuthContext.signUp).toHaveBeenCalledWith('test@example.com', 'password123')
     })
+  })
+
+  it('handles login errors', async () => {
+    mockAuthContext.signIn.mockResolvedValue({ error: 'Invalid credentials' })
+
+    render(<AuthPage />)
     
-    // Should not redirect on error
-    expect(mockRouter.push).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'wrongpassword' } })
+    
+    const submitButton = screen.getByRole('button', { name: /sign in/i })
+    fireEvent.click(submitButton)
+    
+    await waitFor(() => {
+      expect(mockAuthContext.signIn).toHaveBeenCalledWith('test@example.com', 'wrongpassword')
+    })
+  })
+
+  it('handles registration errors', async () => {
+    mockAuthContext.signUp.mockResolvedValue({ error: 'Email already exists' })
+
+    render(<AuthPage />)
+    
+    // Switch to register form
+    const signUpLink = screen.getByText('Don\'t have an account? Sign up')
+    fireEvent.click(signUpLink)
+    
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password123' } })
+    
+    const submitButton = screen.getByRole('button', { name: /create account/i })
+    fireEvent.click(submitButton)
+    
+    await waitFor(() => {
+      expect(mockAuthContext.signUp).toHaveBeenCalledWith('test@example.com', 'password123')
+    })
   })
 
   it('validates required fields', async () => {
@@ -236,9 +175,8 @@ describe('AuthPage', () => {
     
     // Should show validation errors
     await waitFor(() => {
-      expect(screen.getByText('Name is required')).toBeTruthy()
-      expect(screen.getByText('Invalid email address')).toBeTruthy()
-      expect(screen.getByText('Password must be at least 8 characters')).toBeTruthy()
+      expect(screen.getByText('Invalid email address')).toBeInTheDocument()
+      expect(screen.getByText('Password must be at least 8 characters')).toBeInTheDocument()
     })
   })
 }) 

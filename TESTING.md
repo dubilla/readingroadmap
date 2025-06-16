@@ -294,4 +294,106 @@ When adding new features:
 
 ---
 
-**Remember**: Good tests are an investment in code quality and developer productivity. Write tests that are maintainable, readable, and provide confidence in your code changes. 
+**Remember**: Good tests are an investment in code quality and developer productivity. Write tests that are maintainable, readable, and provide confidence in your code changes.
+
+# 🧪 Testing Principles for Supabase Integration
+
+## Philosophy
+
+- **Test your app, not Supabase.**
+- **Mock Supabase at the boundary.**
+- **Never test Supabase's own functionality.**
+- **Test your integration logic and UI flows.**
+
+---
+
+## 1. Unit & Integration Tests
+
+- **Mock Supabase clients** (`@supabase/supabase-js`, `@supabase/ssr`) globally in `jest.setup.js`.
+- **Test your app's logic and UI**:
+  - Simulate Supabase responses (success, error, loading, etc.).
+  - Do not test if Supabase itself works.
+- **Override the global mock** in individual tests as needed:
+  - Use `mockImplementation` or `mockResolvedValue` to simulate different scenarios.
+
+### Example
+```js
+// In a test file
+import { supabase } from '../lib/supabase'
+
+supabase.auth.signInWithPassword.mockResolvedValue({
+  data: { user: { id: '123', email: 'test@example.com' }, session: {} },
+  error: null,
+});
+```
+
+---
+
+## 2. API Route Tests
+
+- **Mock Supabase in API route tests** using the global mock.
+- **Override** the mock for each test case to simulate different database/auth responses.
+
+---
+
+## 3. End-to-End (E2E) Tests
+
+- Use a **test Supabase project** or the [Supabase CLI](https://supabase.com/docs/guides/cli/local-development) for a local stack.
+- Clean up data before/after tests.
+
+---
+
+## 4. What Not to Test
+
+- Do **not** test if Supabase's `signInWithPassword` actually signs in a user.
+- Do **not** test Supabase's RLS, database, or auth internals.
+- Do **test** how your app handles:
+  - Successful/failed logins
+  - Session expiration
+  - RLS errors
+  - Database errors
+
+---
+
+## 5. Where to Mock
+
+- **jest.setup.js**: Central place for all Supabase mocks.
+- **Individual tests**: Override the global mock for specific scenarios.
+- **Never** duplicate Supabase mocks in each test file unless you need a special override.
+
+---
+
+## 6. Example: Centralized Mock (jest.setup.js)
+
+```js
+// jest.setup.js
+jest.mock('@supabase/supabase-js', () => ({
+  createClient: jest.fn(() => ({
+    auth: {
+      signInWithPassword: jest.fn(),
+      // ...other methods
+    },
+    from: jest.fn(() => ({
+      select: jest.fn(),
+      // ...other methods
+    })),
+  })),
+}));
+```
+
+---
+
+## 7. Summary Table
+
+| Test Type         | Supabase Usage         | How to Handle                |
+|-------------------|-----------------------|------------------------------|
+| Unit/Integration  | Mocked client         | Test app logic, not Supabase |
+| API Route         | Mocked client         | Simulate DB/auth responses   |
+| E2E               | Real/test Supabase    | Test full integration        |
+
+---
+
+## 8. Resources
+- [Supabase Testing Docs](https://supabase.com/docs/guides/testing)
+- [Jest Mock Functions](https://jestjs.io/docs/mock-functions)
+- [Supabase CLI Local Development](https://supabase.com/docs/guides/cli/local-development) 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '../../../lib/database'
+import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
 
 const swimlaneSchema = z.object({
@@ -10,8 +10,40 @@ const swimlaneSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // For now, we'll use a simple approach - in production you'd want proper auth
-    const { data: swimlanes, error } = await db.query('swimlanes')
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
+    const { data: swimlanes, error } = await supabase
+      .from('swimlanes')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('order', { ascending: true })
 
     if (error) {
       console.error('Error fetching swimlanes:', error)
@@ -21,7 +53,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(swimlanes || [])
+    return NextResponse.json(swimlanes)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
@@ -33,6 +65,35 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const result = swimlaneSchema.safeParse(body)
     if (!result.success) {
@@ -42,10 +103,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: swimlane, error } = await db.insert('swimlanes', {
-      ...result.data,
-      user_id: 1 // For now, hardcoded - you'd get this from auth
-    })
+    const swimlaneData = result.data
+    const { data: swimlane, error } = await supabase
+      .from('swimlanes')
+      .insert({
+        name: swimlaneData.name,
+        description: swimlaneData.description,
+        order: swimlaneData.order,
+        user_id: session.user.id
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error('Error creating swimlane:', error)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '../../../lib/database'
+import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
 import { READING_SPEEDS, AVG_WORDS_PER_PAGE } from '../../../shared/schema'
 
@@ -14,8 +14,40 @@ const bookSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    // For now, we'll use a simple approach - in production you'd want proper auth
-    const { data: books, error } = await db.query('books')
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
+    const { data: books, error } = await supabase
+      .from('books')
+      .select('*')
+      .eq('user_id', session.user.id)
+      .order('added_at', { ascending: false })
 
     if (error) {
       console.error('Error fetching books:', error)
@@ -37,6 +69,35 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     const result = bookSchema.safeParse(body)
     if (!result.success) {
@@ -51,24 +112,16 @@ export async function POST(request: NextRequest) {
       (bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.AVERAGE
     )
 
-    // For now, we'll use a simple approach - in production you'd want proper auth
-    // The user_id should come from the authenticated user
-    const { data: users } = await db.query('users')
-    if (!users || users.length === 0) {
-      return NextResponse.json(
-        { error: 'No users found. Please create an account first.' },
-        { status: 401 }
-      )
-    }
-
-    const userId = users[0].id // Use the first user for now
-
-    const { data: book, error } = await db.insert('books', {
-      ...bookData,
-      user_id: userId,
-      reading_progress: 0,
-      estimated_minutes: estimatedMinutes
-    })
+    const { data: book, error } = await supabase
+      .from('books')
+      .insert({
+        ...bookData,
+        user_id: session.user.id,
+        reading_progress: 0,
+        estimated_minutes: estimatedMinutes
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error('Error creating book:', error)

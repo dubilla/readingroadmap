@@ -12,6 +12,9 @@ const customJestConfig = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(@supabase|@supabase/supabase-js|@supabase/ssr)/)',
+  ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     'components/**/*.{js,jsx,ts,tsx}',

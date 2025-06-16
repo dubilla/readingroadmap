@@ -1,9 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '../../../../lib/database'
+import { createServerClient } from '@supabase/ssr'
 import type { Book } from '../../../../shared/schema'
 
 export async function GET(request: NextRequest) {
   try {
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
+      return NextResponse.json(
+        { error: 'Not authenticated' },
+        { status: 401 }
+      )
+    }
+
     const { searchParams } = new URL(request.url)
     const query = searchParams.get('query')
 
@@ -14,8 +43,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // For now, we'll use a simple approach - in production you'd want proper auth
-    const { data: allBooks, error } = await db.query('books')
+    const { data: books, error } = await supabase
+      .from('books')
+      .select('*')
+      .eq('user_id', session.user.id)
 
     if (error) {
       console.error('Error fetching books:', error)
@@ -26,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter books in memory
-    const filteredBooks = (allBooks || []).filter((book: Book) => 
+    const filteredBooks = (books || []).filter((book: Book) => 
       book.title.toLowerCase().includes(query.toLowerCase()) ||
       book.author.toLowerCase().includes(query.toLowerCase())
     )

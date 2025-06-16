@@ -2,12 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 export async function middleware(req: NextRequest) {
-  // Skip middleware for local development without Supabase
-  if (process.env.NODE_ENV === 'development' && !process.env.SUPABASE_URL) {
-    return NextResponse.next()
-  }
-
-  // Only run Supabase auth middleware in production or when Supabase is configured
+  // Only run Supabase auth middleware when Supabase is configured
   if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     const { createServerClient } = await import('@supabase/ssr')
     
