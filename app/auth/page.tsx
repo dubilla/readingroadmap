@@ -9,7 +9,7 @@ import { Input } from '../../components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../../components/ui/form'
 import { useToast } from '../../hooks/use-toast'
-import { useAuth } from '../../contexts/auth-context'
+import { useRouter } from 'next/navigation'
 import { useSearchParams } from 'next/navigation'
 
 // Auth schemas
@@ -27,7 +27,7 @@ export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
-  const { signIn, signUp } = useAuth()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const bookDataParam = searchParams.get('book')
 
@@ -55,14 +55,28 @@ export default function AuthPage() {
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     setIsLoading(true)
     try {
-      const result = await signIn(data.email, data.password)
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      const result = await response.json()
       
-      if (result.error) {
+      if (!response.ok) {
         toast({
           title: "Error",
-          description: result.error,
+          description: result.error || "Login failed",
           variant: "destructive",
         })
+      } else {
+        toast({
+          title: "Success",
+          description: "Welcome back!",
+        })
+        router.push('/')
       }
     } catch (error) {
       toast({
@@ -78,14 +92,28 @@ export default function AuthPage() {
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
     setIsLoading(true)
     try {
-      const result = await signUp(data.email, data.password)
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      })
+
+      const result = await response.json()
       
-      if (result.error) {
+      if (!response.ok) {
         toast({
           title: "Error",
-          description: result.error,
+          description: result.error || "Registration failed",
           variant: "destructive",
         })
+      } else {
+        toast({
+          title: "Success",
+          description: "Account created successfully!",
+        })
+        router.push('/')
       }
     } catch (error) {
       toast({

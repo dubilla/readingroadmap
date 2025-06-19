@@ -11,7 +11,6 @@ import { Search, Plus } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 import { searchBooks, getCoverImageUrl, type OpenLibraryBook } from "@/lib/openLibrary";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/contexts/auth-context";
 import { useRouter } from "next/navigation";
 import type { Book } from "@shared/schema";
 
@@ -34,10 +33,23 @@ export function BookSearch({ laneId }: BookSearchProps) {
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const debouncedQuery = useDebounce(query, 300);
   const queryClient = useQueryClient();
-  const { isAuthenticated } = useAuth();
   const router = useRouter();
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        setIsAuthenticated(response.ok);
+      } catch (error) {
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
 
   const addBookMutation = useMutation({
     mutationFn: async (book: SearchResult) => {

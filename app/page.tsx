@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useQuery } from "@tanstack/react-query"
 import { ReadingBoard } from "../components/reading-board"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
@@ -10,25 +10,46 @@ import { BookSearch } from "../components/book-search"
 import { NavHeader } from "../components/nav-header"
 import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, ArrowRight, BookMarked } from "lucide-react"
 import type { Book, Lane } from "../shared/schema"
-import { useAuth } from "../contexts/auth-context"
 import { useRouter } from "next/navigation"
 
 export default function HomePage() {
-  const { user, isLoading: authLoading, isAuthenticated } = useAuth()
   const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
+  const [user, setUser] = useState<{ email: string } | null>(null)
+  
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (response.ok) {
+          const data = await response.json()
+          setUser(data.user)
+          setIsAuthenticated(true)
+        } else {
+          setUser(null)
+          setIsAuthenticated(false)
+        }
+      } catch (error) {
+        setUser(null)
+        setIsAuthenticated(false)
+      }
+    }
+    checkAuth()
+  }, [])
   
   const { data: books, isLoading: booksLoading } = useQuery<Book[]>({
     queryKey: ["/api/books"],
-    enabled: isAuthenticated // Only fetch if authenticated
+    enabled: isAuthenticated === true // Only fetch if authenticated
   })
   
   const { data: lanes, isLoading: lanesLoading } = useQuery<Lane[]>({
     queryKey: ["/api/lanes"],
-    enabled: isAuthenticated // Only fetch if authenticated
+    enabled: isAuthenticated === true // Only fetch if authenticated
   })
   
   const [activeTab, setActiveTab] = useState("dashboard")
-  const isLoading = authLoading || (isAuthenticated && (booksLoading || lanesLoading))
+  const isLoading = isAuthenticated === null || (isAuthenticated && (booksLoading || lanesLoading))
   
   // Show loading state
   if (isLoading) {
