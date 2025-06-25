@@ -9,7 +9,7 @@ const bookSchema = z.object({
   pages: z.number().min(1),
   coverUrl: z.string().url(),
   status: z.enum(['to-read', 'reading', 'completed']),
-  laneId: z.number().optional()
+  laneId: z.number().nullable().optional()
 })
 
 export async function GET(request: NextRequest) {
@@ -108,16 +108,20 @@ export async function POST(request: NextRequest) {
     }
 
     const bookData = result.data
-    const estimatedMinutes = Math.round(
-      (bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.AVERAGE
-    )
+    
+    // Calculate estimated reading time (average speed)
+    const estimatedMinutes = Math.ceil((bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.average)
 
     const { data: book, error } = await supabase
       .from('books')
       .insert({
-        ...bookData,
+        title: bookData.title,
+        author: bookData.author,
+        pages: bookData.pages,
+        cover_url: bookData.coverUrl,
+        status: bookData.status,
         user_id: session.user.id,
-        reading_progress: 0,
+        lane_id: bookData.laneId || null,
         estimated_minutes: estimatedMinutes
       })
       .select()

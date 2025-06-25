@@ -1,8 +1,21 @@
-import { pgTable, text, serial, integer, timestamp, boolean } from "drizzle-orm/pg-core";
+// Supabase Database Schema
+// This project uses Supabase for database, authentication, and API.
+// For local development, use: supabase start && supabase db reset
+// For production, use Supabase Cloud.
+
+import { pgTable, serial, text, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User table for authentication
+// Reading speed constants
+export const READING_SPEEDS = {
+  slow: 150, // words per minute
+  average: 250,
+  fast: 350,
+} as const;
+
+export const AVG_WORDS_PER_PAGE = 250;
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: text("email").notNull().unique(),
@@ -11,21 +24,11 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const swimlanes = pgTable("swimlanes", {
+export const userLanes = pgTable("user_lanes", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  description: text("description"),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   order: integer("order").notNull(),
-  userId: integer("user_id"), // Made optional for default swimlanes
-});
-
-export const lanes = pgTable("lanes", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  order: integer("order").notNull(),
-  type: text("type").notNull(), // "backlog", "in-progress", "completed"
-  swimlaneId: integer("swimlane_id"), // null for completed lane
 });
 
 export const books = pgTable("books", {
@@ -35,60 +38,33 @@ export const books = pgTable("books", {
   pages: integer("pages").notNull(),
   coverUrl: text("cover_url").notNull(),
   status: text("status").notNull(), // "to-read", "reading", "completed"
-  userId: integer("user_id").notNull(), // Added user relationship
-  laneId: integer("lane_id"), // Now optional - null means it's in the user's general backlog
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  laneId: integer("lane_id").references(() => userLanes.id, { onDelete: "set null" }), // null = default lane
   readingProgress: integer("reading_progress").default(0),
   goodreadsId: text("goodreads_id"),
   estimatedMinutes: integer("estimated_minutes").notNull(),
   addedAt: timestamp("added_at").defaultNow().notNull(),
 });
 
-// User schemas
+// Zod schemas for validation
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
-  hashedPassword: true,
   createdAt: true,
 });
 
-export const insertSwimlaneSchema = createInsertSchema(swimlanes).omit({
+export const insertUserLaneSchema = createInsertSchema(userLanes).omit({
   id: true,
 });
 
-export const insertLaneSchema = createInsertSchema(lanes).omit({
+export const insertBookSchema = createInsertSchema(books).omit({
   id: true,
-}).extend({
-  type: z.enum(["backlog", "in-progress", "completed"])
+  addedAt: true,
 });
 
-export const insertBookSchema = createInsertSchema(books).omit({ 
-  id: true,
-  readingProgress: true,
-  estimatedMinutes: true,
-  addedAt: true
-}).extend({
-  pages: z.number().min(1),
-  status: z.enum(["to-read", "reading", "completed"])
-});
-
-// Types
+// Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
-
-export type InsertSwimlane = z.infer<typeof insertSwimlaneSchema>;
-export type Swimlane = typeof swimlanes.$inferSelect;
-
-export type InsertLane = z.infer<typeof insertLaneSchema>;
-export type Lane = typeof lanes.$inferSelect;
-
+export type InsertUserLane = z.infer<typeof insertUserLaneSchema>;
+export type UserLane = typeof userLanes.$inferSelect;
 export type InsertBook = z.infer<typeof insertBookSchema>;
 export type Book = typeof books.$inferSelect;
-
-// Reading speed - average words per minute
-export const READING_SPEEDS = {
-  SLOW: 150,
-  AVERAGE: 250,
-  FAST: 400
-};
-
-// Average words per page for books
-export const AVG_WORDS_PER_PAGE = 250;

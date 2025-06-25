@@ -14,10 +14,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { useRouter } from "next/navigation";
 import type { Book } from "@shared/schema";
 
-interface BookSearchProps {
-  laneId: number;
-}
-
 interface SearchResult {
   id?: number; // Local database ID if it exists
   title: string;
@@ -28,7 +24,7 @@ interface SearchResult {
   openLibraryData?: OpenLibraryBook; // Original Open Library data if from external API
 }
 
-export function BookSearch({ laneId }: BookSearchProps) {
+export function BookSearch() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -59,7 +55,7 @@ export function BookSearch({ laneId }: BookSearchProps) {
         pages: book.pages,
         coverUrl: book.coverUrl,
         status: "to-read",
-        laneId
+        laneId: null // Default to null (default lane)
       });
     },
     onSuccess: () => {
@@ -134,7 +130,7 @@ export function BookSearch({ laneId }: BookSearchProps) {
         pages: book.pages,
         coverUrl: book.coverUrl,
         status: "to-read",
-        laneId
+        laneId: null
       }));
       router.push(`/auth?book=${bookData}`);
       setOpen(false);

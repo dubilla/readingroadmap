@@ -9,7 +9,7 @@ import { Button } from "../components/ui/button"
 import { BookSearch } from "../components/book-search"
 import { NavHeader } from "../components/nav-header"
 import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, ArrowRight, BookMarked } from "lucide-react"
-import type { Book, Lane } from "../shared/schema"
+import type { Book, UserLane } from "../shared/schema"
 import { useRouter } from "next/navigation"
 
 export default function HomePage() {
@@ -43,7 +43,7 @@ export default function HomePage() {
     enabled: isAuthenticated === true // Only fetch if authenticated
   })
   
-  const { data: lanes, isLoading: lanesLoading } = useQuery<Lane[]>({
+  const { data: userLanes, isLoading: lanesLoading } = useQuery<UserLane[]>({
     queryKey: ["/api/lanes"],
     enabled: isAuthenticated === true // Only fetch if authenticated
   })
@@ -142,13 +142,9 @@ export default function HomePage() {
   }
 
   // Show dashboard for authenticated users
-  const backlogLane = lanes?.find(lane => lane.type === "backlog")
-  const inProgressLane = lanes?.find(lane => lane.type === "in-progress")
-  const completedLane = lanes?.find(lane => lane.type === "completed" && !lane.swimlaneId)
-  
-  const backlogCount = books?.filter(book => book.laneId === backlogLane?.id).length || 0
-  const inProgressCount = books?.filter(book => book.laneId === inProgressLane?.id).length || 0
-  const completedCount = books?.filter(book => book.laneId === completedLane?.id).length || 0
+  const toReadCount = books?.filter(book => book.status === "to-read").length || 0
+  const inProgressCount = books?.filter(book => book.status === "reading").length || 0
+  const completedCount = books?.filter(book => book.status === "completed").length || 0
   const totalBooks = books?.length || 0
 
   const renderDashboard = () => (
@@ -168,10 +164,10 @@ export default function HomePage() {
         <Card className="bg-amber-50 dark:bg-amber-950/30">
           <CardContent className="p-6 flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Backlog</h3>
+              <h3 className="text-lg font-medium">To Read</h3>
               <ListTodo className="h-5 w-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <p className="text-3xl font-bold">{backlogCount}</p>
+            <p className="text-3xl font-bold">{toReadCount}</p>
             <p className="text-sm text-muted-foreground mt-2">Books to read</p>
           </CardContent>
         </Card>
@@ -203,7 +199,7 @@ export default function HomePage() {
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <h3 className="text-xl font-semibold">Recently Added</h3>
-          {backlogLane && <BookSearch laneId={backlogLane.id} />}
+          <BookSearch />
         </div>
         
         {books && books.length > 0 ? (
@@ -232,7 +228,7 @@ export default function HomePage() {
               <p className="text-muted-foreground mb-4">
                 Start building your reading roadmap by adding your first book
               </p>
-              {backlogLane && <BookSearch laneId={backlogLane.id} />}
+              <BookSearch />
             </CardContent>
           </Card>
         )}
@@ -294,7 +290,7 @@ export default function HomePage() {
           ) : (
             <Card>
               <CardContent className="p-6">
-                <ReadingBoard books={books || []} />
+                <ReadingBoard books={books || []} userLanes={userLanes || []} />
               </CardContent>
             </Card>
           )}
