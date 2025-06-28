@@ -1,18 +1,26 @@
 'use client'
 
 import { useState, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus } from "lucide-react";
-import { useDebounce } from "@/hooks/use-debounce";
-import { searchBooks, getCoverImageUrl, type OpenLibraryBook } from "@/lib/openLibrary";
-import { apiRequest } from "@/lib/queryClient";
 import { useRouter } from "next/navigation";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Plus, Search } from "lucide-react";
+import { useDebounce } from "@/hooks/use-debounce";
+import { apiRequest } from "@/lib/queryClient";
+import { searchBooks, getCoverImageUrl } from "@/lib/openLibrary";
 import type { Book } from "@shared/schema";
+
+interface OpenLibraryBook {
+  key: string;
+  title: string;
+  author_name?: string[];
+  number_of_pages_median?: number;
+  cover_i?: number;
+}
 
 interface SearchResult {
   id?: number; // Local database ID if it exists

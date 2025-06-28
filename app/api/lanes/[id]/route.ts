@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../../lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
 
 const updateLaneSchema = z.object({
@@ -12,12 +12,34 @@ const updateLaneSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { id } = await params
+    
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -25,9 +47,10 @@ export async function GET(
     }
 
     const { data: lane, error } = await supabase
-      .from('lanes')
+      .from('user_lanes')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
       .single()
 
     if (error) {
@@ -56,12 +79,34 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { id } = await params
+    
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -78,9 +123,10 @@ export async function PUT(
     }
 
     const { data: lane, error } = await supabase
-      .from('lanes')
+      .from('user_lanes')
       .update(result.data)
-      .eq('id', params.id)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
       .select()
       .single()
 
@@ -110,12 +156,34 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { id } = await params
+    
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -123,9 +191,10 @@ export async function DELETE(
     }
 
     const { error } = await supabase
-      .from('lanes')
+      .from('user_lanes')
       .delete()
-      .eq('id', params.id)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
 
     if (error) {
       console.error('Error deleting lane:', error)

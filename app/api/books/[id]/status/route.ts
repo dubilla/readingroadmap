@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
+import { Book } from '../../../../../shared/schema'
 
 const updateStatusSchema = z.object({
   status: z.enum(['to-read', 'reading', 'completed'])
@@ -8,9 +9,11 @@ const updateStatusSchema = z.object({
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+    
     // Create Supabase server client
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,7 +58,7 @@ export async function PATCH(
     const { data: book, error } = await supabase
       .from('books')
       .update({ status })
-      .eq('id', params.id)
+      .eq('id', id)
       .eq('user_id', session.user.id)
       .select()
       .single()
@@ -74,7 +77,23 @@ export async function PATCH(
       )
     }
 
-    return NextResponse.json(book)
+    // Transform book from snake_case to camelCase
+    const transformedBook: Book = {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      pages: book.pages,
+      coverUrl: book.cover_url,
+      status: book.status,
+      userId: book.user_id,
+      laneId: book.lane_id,
+      readingProgress: book.reading_progress,
+      goodreadsId: book.goodreads_id,
+      estimatedMinutes: book.estimated_minutes,
+      addedAt: book.added_at,
+    }
+
+    return NextResponse.json(transformedBook)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(

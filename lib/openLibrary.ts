@@ -48,7 +48,7 @@ export async function searchBooks(query: string): Promise<OpenLibraryBook[]> {
       if (error.response?.status === 429) {
         throw new Error('Too many requests. Please wait a moment and try again.');
       }
-      if (error.response?.status >= 500) {
+      if (error.response?.status && error.response.status >= 500) {
         throw new Error('Open Library service is temporarily unavailable. Please try again later.');
       }
     }

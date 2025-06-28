@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
-import { READING_SPEEDS, AVG_WORDS_PER_PAGE } from '../../../shared/schema'
+import { READING_SPEEDS, AVG_WORDS_PER_PAGE, Book } from '../../../shared/schema'
 
 const bookSchema = z.object({
   title: z.string().min(1),
@@ -57,7 +57,23 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(books)
+    // Transform books from snake_case to camelCase
+    const transformedBooks: Book[] = books?.map(r => ({
+      id: r.id,
+      title: r.title,
+      author: r.author,
+      pages: r.pages,
+      coverUrl: r.cover_url,
+      status: r.status,
+      userId: r.user_id,
+      laneId: r.lane_id,
+      readingProgress: r.reading_progress,
+      goodreadsId: r.goodreads_id,
+      estimatedMinutes: r.estimated_minutes,
+      addedAt: r.added_at,
+    })) || []
+
+    return NextResponse.json(transformedBooks)
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(
@@ -112,6 +128,7 @@ export async function POST(request: NextRequest) {
     // Calculate estimated reading time (average speed)
     const estimatedMinutes = Math.ceil((bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.average)
 
+    // Transform camelCase to snake_case for database
     const { data: book, error } = await supabase
       .from('books')
       .insert({
@@ -120,9 +137,9 @@ export async function POST(request: NextRequest) {
         pages: bookData.pages,
         cover_url: bookData.coverUrl,
         status: bookData.status,
-        user_id: session.user.id,
+        user_id: parseInt(session.user.id),
         lane_id: bookData.laneId || null,
-        estimated_minutes: estimatedMinutes
+        estimated_minutes: estimatedMinutes,
       })
       .select()
       .single()
@@ -135,7 +152,23 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json(book, { status: 201 })
+    // Transform the created book back to camelCase for frontend
+    const transformedBook: Book = {
+      id: book.id,
+      title: book.title,
+      author: book.author,
+      pages: book.pages,
+      coverUrl: book.cover_url,
+      status: book.status,
+      userId: book.user_id,
+      laneId: book.lane_id,
+      readingProgress: book.reading_progress,
+      goodreadsId: book.goodreads_id,
+      estimatedMinutes: book.estimated_minutes,
+      addedAt: book.added_at,
+    }
+
+    return NextResponse.json(transformedBook, { status: 201 })
   } catch (error) {
     console.error('Error:', error)
     return NextResponse.json(

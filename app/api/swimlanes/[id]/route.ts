@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '../../../../lib/supabase'
+import { createServerClient } from '@supabase/ssr'
 import { z } from 'zod'
 
 const updateSwimlaneSchema = z.object({
@@ -10,27 +10,36 @@ const updateSwimlaneSchema = z.object({
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { id } = await params
+    
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
         { status: 401 }
       )
     }
@@ -38,8 +47,8 @@ export async function GET(
     const { data: swimlane, error } = await supabase
       .from('swimlanes')
       .select('*')
-      .eq('id', params.id)
-      .or(`user_id.is.null,user_id.eq.${user.id}`)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
       .single()
 
     if (error) {
@@ -68,27 +77,36 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { id } = await params
+    
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
         { status: 401 }
       )
     }
@@ -105,8 +123,8 @@ export async function PUT(
     const { data: swimlane, error } = await supabase
       .from('swimlanes')
       .update(result.data)
-      .eq('id', params.id)
-      .or(`user_id.is.null,user_id.eq.${user.id}`)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
       .select()
       .single()
 
@@ -136,27 +154,36 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get current user
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
+    const { id } = await params
+    
+    // Create Supabase server client
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is handled by the middleware
+          },
+          remove(name: string, options: any) {
+            // This is handled by the middleware
+          },
+        },
+      }
+    )
+
+    // Get the current session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError || !session) {
       return NextResponse.json(
         { error: 'Not authenticated' },
-        { status: 401 }
-      )
-    }
-
-    const { data: user } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
         { status: 401 }
       )
     }
@@ -164,8 +191,8 @@ export async function DELETE(
     const { error } = await supabase
       .from('swimlanes')
       .delete()
-      .eq('id', params.id)
-      .or(`user_id.is.null,user_id.eq.${user.id}`)
+      .eq('id', id)
+      .eq('user_id', session.user.id)
 
     if (error) {
       console.error('Error deleting swimlane:', error)

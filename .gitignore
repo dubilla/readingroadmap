@@ -107,3 +107,4 @@ roadmap.md
 # Local backups
 *.backup
 .env.local.backup
+.vercel
