@@ -10,6 +10,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  experimental: {
+    // Ensure compatibility with Vercel
+    serverComponentsExternalPackages: [],
+  },
 }
 
 export default nextConfig 
