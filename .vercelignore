@@ -1,18 +1,26 @@
+# Dependencies
 node_modules
+
+# Environment files
 .env
 .env.local
 .env.*.local
-*.log
-*.tgz
+
+# Build artifacts (Next.js handles this)
+.next
+dist
+
+# Development files
 .DS_Store
 .vscode
 .idea
+*.log
+*.tgz
 *.swp
 *.swo
 *~
-client/
-server/
-shared/
+
+# Test files and directories
 __tests__/
 test/
 e2e/
@@ -20,14 +28,20 @@ e2e/
 *.test.tsx
 *.spec.ts
 *.spec.tsx
-migrations/
-drizzle.config.ts
-vite.config.ts
+jest.config.js
+jest.setup.js
+playwright.config.ts
+
+# Supabase local development
+supabase/
+
+# Documentation (not needed for deployment)
 README.md
 roadmap.md
 DEPLOYMENT.md
 LOCAL_DEVELOPMENT.md
 TESTING.md
-jest.config.js
-jest.setup.js
-playwright.config.ts
+
+# Development tools
+vite.config.ts
+drizzle.config.ts
