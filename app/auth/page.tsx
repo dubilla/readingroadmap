@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { Suspense, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -23,7 +23,8 @@ const registerSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters")
 })
 
-export default function AuthPage() {
+// Inner component that uses useSearchParams
+function AuthForm() {
   const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
@@ -127,108 +128,130 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">
-            {isLogin ? "Sign In" : "Create Account"}
-          </CardTitle>
-          <CardDescription className="text-center">
-            {isLogin 
-              ? "Enter your credentials to access your reading roadmap"
-              : "Create an account to start organizing your reading journey"
-            }
-          </CardDescription>
-          {bookData && (
-            <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                📚 <strong>{bookData.title}</strong> by {bookData.author} will be added to your reading roadmap after you create an account.
-              </p>
-            </div>
-          )}
-        </CardHeader>
-        <CardContent>
-          {isLogin ? (
-            <Form {...loginForm}>
-              <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
-                <FormField
-                  control={loginForm.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input type="email" placeholder="Enter your email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={loginForm.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input type="password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
-          ) : (
-            <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  {...registerForm.register('email')}
-                  className="w-full p-2 border rounded"
-                />
-                {registerForm.formState.errors.email && (
-                  <p className="text-sm text-red-500 mt-1">{registerForm.formState.errors.email.message}</p>
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1">
+        <CardTitle className="text-2xl text-center">
+          {isLogin ? "Sign In" : "Create Account"}
+        </CardTitle>
+        <CardDescription className="text-center">
+          {isLogin 
+            ? "Enter your credentials to access your reading roadmap"
+            : "Create an account to start organizing your reading journey"
+          }
+        </CardDescription>
+        {bookData && (
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              📚 <strong>{bookData.title}</strong> by {bookData.author} will be added to your reading roadmap after you create an account.
+            </p>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        {isLogin ? (
+          <Form {...loginForm}>
+            <form onSubmit={loginForm.handleSubmit(onLogin)} className="space-y-4">
+              <FormField
+                control={loginForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="Enter your email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Password</label>
-                <input
-                  type="password"
-                  {...registerForm.register('password')}
-                  className="w-full p-2 border rounded"
-                />
-                {registerForm.formState.errors.password && (
-                  <p className="text-sm text-red-500 mt-1">{registerForm.formState.errors.password.message}</p>
+              />
+              <FormField
+                control={loginForm.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
                 )}
-              </div>
-              
+              />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create Account"}
+                {isLoading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
-          )}
-          
-          <div className="mt-4 text-center">
-            <Button
-              variant="link"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-sm"
-            >
-              {isLogin 
-                ? "Don't have an account? Sign up" 
-                : "Already have an account? Sign in"
-              }
+          </Form>
+        ) : (
+          <form onSubmit={registerForm.handleSubmit(onRegister)} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-2">Email</label>
+              <input
+                type="email"
+                placeholder="Enter your email"
+                {...registerForm.register('email')}
+                className="w-full p-2 border rounded"
+              />
+              {registerForm.formState.errors.email && (
+                <p className="text-sm text-red-500 mt-1">{registerForm.formState.errors.email.message}</p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium mb-2">Password</label>
+              <input
+                type="password"
+                {...registerForm.register('password')}
+                className="w-full p-2 border rounded"
+              />
+              {registerForm.formState.errors.password && (
+                <p className="text-sm text-red-500 mt-1">{registerForm.formState.errors.password.message}</p>
+              )}
+            </div>
+            
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Creating account..." : "Create Account"}
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </form>
+        )}
+        
+        <div className="mt-4 text-center">
+          <Button
+            variant="link"
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-sm"
+          >
+            {isLogin 
+              ? "Don't have an account? Sign up" 
+              : "Already have an account? Sign in"
+            }
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// Main page component with Suspense boundary
+export default function AuthPage() {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Suspense fallback={
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1">
+            <CardTitle className="text-2xl text-center">Loading...</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="animate-pulse space-y-4">
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          </CardContent>
+        </Card>
+      }>
+        <AuthForm />
+      </Suspense>
     </div>
   )
 } 
