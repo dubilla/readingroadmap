@@ -22,7 +22,7 @@ export interface Book {
   pages: number;
   coverUrl: string;
   status: 'to-read' | 'reading' | 'completed';
-  userId: number;
+  userId: string;
   laneId: number | null;
   readingProgress: number;
   goodreadsId?: string;
@@ -33,12 +33,12 @@ export interface Book {
 export interface UserLane {
   id: number;
   name: string;
-  userId: number;
+  userId: string;
   order: number;
 }
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
   name: string;
   hashedPassword: string;
@@ -54,7 +54,7 @@ export const insertUserSchema = z.object({
 
 export const insertUserLaneSchema = z.object({
   name: z.string().min(1),
-  userId: z.number(),
+  userId: z.string().uuid(),
   order: z.number(),
 });
 
@@ -64,7 +64,7 @@ export const insertBookSchema = z.object({
   pages: z.number().min(1),
   coverUrl: z.string().url(),
   status: z.enum(['to-read', 'reading', 'completed']),
-  userId: z.number(),
+  userId: z.string().uuid(),
   laneId: z.number().nullable().optional(),
   readingProgress: z.number().default(0),
   goodreadsId: z.string().optional(),

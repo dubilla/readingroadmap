@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
         pages: bookData.pages,
         cover_url: bookData.coverUrl,
         status: bookData.status,
-        user_id: parseInt(session.user.id),
+        user_id: session.user.id,
         lane_id: bookData.laneId || null,
         estimated_minutes: estimatedMinutes,
       })

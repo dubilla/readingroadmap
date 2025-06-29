@@ -38,24 +38,10 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get user ID from users table
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
     const { data: userLanes, error } = await supabase
       .from('user_lanes')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', session.user.id)
       .order('order', { ascending: true })
 
     if (error) {
@@ -107,20 +93,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user ID from users table
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', session.user.email)
-      .single()
-
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
     const body = await request.json()
     const result = userLaneSchema.safeParse(body)
     if (!result.success) {
@@ -135,7 +107,7 @@ export async function POST(request: NextRequest) {
       .from('user_lanes')
       .insert({
         name: userLaneData.name,
-        user_id: user.id,
+        user_id: session.user.id,
         order: userLaneData.order
       })
       .select()

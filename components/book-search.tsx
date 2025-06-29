@@ -79,16 +79,42 @@ export function BookSearch() {
       return;
     }
 
+    console.log('🔍 Starting search for:', value);
     setIsSearching(true);
     try {
       // Search local database
+      console.log('📚 Searching local database...');
       const localResponse = await fetch(`/api/books/search?query=${encodeURIComponent(value)}`);
-      const localBooks: Book[] = await localResponse.json();
+      let localBooks: Book[] = [];
+      
+      console.log('📊 Local search response status:', localResponse.status);
+      
+      if (localResponse.ok) {
+        const localData = await localResponse.json();
+        console.log('📊 Local search response data:', localData);
+        // Ensure localData is an array
+        localBooks = Array.isArray(localData) ? localData : [];
+        console.log('📚 Local books found:', localBooks.length);
+      } else {
+        console.error('❌ Local search failed:', localResponse.status);
+        localBooks = [];
+      }
 
       // Search Open Library
-      const openLibraryBooks = await searchBooks(value);
+      console.log('🌐 Searching Open Library...');
+      let openLibraryBooks: OpenLibraryBook[] = [];
+      try {
+        openLibraryBooks = await searchBooks(value);
+        // Ensure openLibraryBooks is an array
+        openLibraryBooks = Array.isArray(openLibraryBooks) ? openLibraryBooks : [];
+        console.log('🌐 Open Library books found:', openLibraryBooks.length);
+      } catch (error) {
+        console.error('❌ Open Library search failed:', error);
+        openLibraryBooks = [];
+      }
 
       // Combine and deduplicate results
+      console.log('🔗 Combining results...');
       const combinedResults: SearchResult[] = [
         // Local books
         ...localBooks.map(book => ({
@@ -116,9 +142,11 @@ export function BookSearch() {
           }))
       ];
 
+      console.log('✅ Final combined results:', combinedResults.length);
       setResults(combinedResults);
     } catch (error) {
-      console.error("Error searching books:", error);
+      console.error("❌ Error searching books:", error);
+      setResults([]);
     } finally {
       setIsSearching(false);
     }

@@ -21,7 +21,7 @@ interface ReadingBoardProps {
 
 export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
   const queryClient = useQueryClient();
-  const [currentUser, setCurrentUser] = useState<{ id: number } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
 
   // Get current user
   useEffect(() => {

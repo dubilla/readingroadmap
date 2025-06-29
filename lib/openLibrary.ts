@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 const OPEN_LIBRARY_API = 'https://openlibrary.org';
 
 export interface OpenLibraryBook {
@@ -27,28 +25,61 @@ export async function searchBooks(query: string): Promise<OpenLibraryBook[]> {
     return [];
   }
 
+  console.log('🔍 Searching Open Library for:', query);
+  
   try {
-    const response = await axios.get<OpenLibrarySearchResponse>(`${OPEN_LIBRARY_API}/search.json`, {
-      params: {
-        q: query.trim(),
-        fields: 'key,title,author_name,cover_i,number_of_pages_median',
-        limit: 10
-      },
-      timeout: 10000, // 10 second timeout
+    const url = `${OPEN_LIBRARY_API}/search.json`;
+    const params = new URLSearchParams({
+      q: query.trim(),
+      fields: 'key,title,author_name,cover_i,number_of_pages_median',
+      limit: '10'
     });
     
-    return response.data.docs || [];
-  } catch (error) {
-    console.error('Error searching books:', error);
+    const fullUrl = `${url}?${params.toString()}`;
+    console.log('📡 Making request to:', fullUrl);
     
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNABORTED') {
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+      // Add a timeout using AbortController
+      signal: AbortSignal.timeout(10000) // 10 second timeout
+    });
+    
+    console.log('✅ Open Library response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data: OpenLibrarySearchResponse = await response.json();
+    
+    console.log('📊 Open Library response data:', {
+      numFound: data.numFound,
+      docsCount: data.docs?.length || 0
+    });
+    
+    return data.docs || [];
+  } catch (error) {
+    console.error('❌ Error searching books:', error);
+    
+    if (error instanceof Error) {
+      console.error('🔍 Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
+      
+      if (error.name === 'AbortError') {
         throw new Error('Search request timed out. Please try again.');
       }
-      if (error.response?.status === 429) {
+      
+      if (error.message.includes('429')) {
         throw new Error('Too many requests. Please wait a moment and try again.');
       }
-      if (error.response?.status && error.response.status >= 500) {
+      
+      if (error.message.includes('500') || error.message.includes('502') || error.message.includes('503')) {
         throw new Error('Open Library service is temporarily unavailable. Please try again later.');
       }
     }
