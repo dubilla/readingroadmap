@@ -110,11 +110,21 @@ function AuthForm() {
           variant: "destructive",
         })
       } else {
-        toast({
-          title: "Success",
-          description: "Account created successfully!",
-        })
-        router.push('/')
+        if (result.requiresConfirmation) {
+          // Email confirmation required
+          toast({
+            title: "Check your email!",
+            description: "We've sent you a confirmation email. Please check your inbox and click the confirmation link to complete your registration.",
+          })
+          // Don't redirect - let user check their email
+        } else {
+          // Immediate sign in (development mode)
+          toast({
+            title: "Success",
+            description: "Account created successfully!",
+          })
+          router.push('/')
+        }
       }
     } catch (error) {
       toast({
@@ -180,6 +190,21 @@ function AuthForm() {
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Signing in..." : "Sign In"}
               </Button>
+              <div className="text-center">
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    // TODO: Implement password reset
+                    toast({
+                      title: "Coming Soon",
+                      description: "Password reset functionality will be available soon.",
+                    })
+                  }}
+                  className="text-sm text-gray-600"
+                >
+                  Forgot your password?
+                </Button>
+              </div>
             </form>
           </Form>
         ) : (

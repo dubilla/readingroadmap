@@ -38,11 +38,6 @@ jest.mock('next/image', () => ({
   },
 }))
 
-// Mock Toaster component to prevent undefined toasts error
-jest.mock('./components/ui/toaster', () => ({
-  Toaster: () => null,
-}))
-
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

@@ -48,16 +48,31 @@ export async function POST(request: NextRequest) {
       options: {
         data: {
           name: name || email.split('@')[0]
-        }
+        },
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'}/auth/callback`
       }
     })
 
     if (error) {
-      console.error('Registration error:', error)
       return NextResponse.json(
         { error: error.message },
         { status: 400 }
       )
+    }
+
+    // Check if email confirmation is required
+    if (data.user && !data.session) {
+      // Email confirmation required
+      return NextResponse.json({
+        success: true,
+        message: 'Please check your email to confirm your account',
+        requiresConfirmation: true,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          name: data.user.user_metadata?.name || data.user.email
+        }
+      })
     }
 
     if (!data.session || !data.user) {
@@ -67,8 +82,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create response with user data
+    // User is immediately signed in (email confirmation disabled in dev)
     const response = NextResponse.json({
+      success: true,
       user: {
         id: data.user.id,
         email: data.user.email,
@@ -79,7 +95,6 @@ export async function POST(request: NextRequest) {
     // Supabase middleware will handle setting the session cookies
     return response
   } catch (error) {
-    console.error('Registration error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

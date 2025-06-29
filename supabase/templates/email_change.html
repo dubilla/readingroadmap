@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirm Your New Email - ReadingRoadmap</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 10px;
+        }
+        .tagline {
+            color: #64748b;
+            font-size: 16px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #059669;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .button:hover {
+            background-color: #047857;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .warning {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">📚 ReadingRoadmap</div>
+            <div class="tagline">Your personal reading journey starts here</div>
+        </div>
+        
+        <div class="content">
+            <h2>Confirm Your New Email Address</h2>
+            <p>Hi there! 👋</p>
+            <p>You recently requested to change the email address associated with your ReadingRoadmap account. To complete this change, please confirm your new email address by clicking the button below:</p>
+            
+            <div style="text-align: center;">
+                <a href="{{ .ConfirmationURL }}" class="button">Confirm New Email</a>
+            </div>
+            
+            <div class="warning">
+                <strong>Security Notice:</strong> This link will expire in 1 hour. If you don't confirm your new email within this time, the change will be cancelled and your current email will remain active.
+            </div>
+            
+            <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+            <p style="word-break: break-all; color: #2563eb;">{{ .ConfirmationURL }}</p>
+        </div>
+        
+        <div class="footer">
+            <p>If you didn't request to change your email address, please ignore this email and contact our support team immediately.</p>
+            <p>© 2024 ReadingRoadmap. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html> 
