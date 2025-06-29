@@ -1,6 +1,5 @@
 import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util'
-import { server } from './test/mocks/server'
 
 // Mock environment variables for testing
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'
@@ -39,6 +38,11 @@ jest.mock('next/image', () => ({
   },
 }))
 
+// Mock Toaster component to prevent undefined toasts error
+jest.mock('./components/ui/toaster', () => ({
+  Toaster: () => null,
+}))
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -70,16 +74,6 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
 
 // Mock fetch globally
 global.fetch = jest.fn()
-
-// Setup MSW server
-beforeAll(() => server.listen())
-
-afterEach(() => {
-  server.resetHandlers()
-  jest.clearAllMocks()
-})
-
-afterAll(() => server.close())
 
 // Mock console methods to reduce noise in tests
 const originalError = console.error
