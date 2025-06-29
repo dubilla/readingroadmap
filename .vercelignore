@@ -37,6 +37,7 @@ roadmap.md
 DEPLOYMENT.md
 LOCAL_DEVELOPMENT.md
 TESTING.md
+DEVELOPMENT_WORKFLOW.md
 
 # Development tools
 vite.config.ts

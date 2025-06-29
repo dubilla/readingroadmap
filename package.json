@@ -8,14 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:debug": "playwright test --debug",
-    "test:all": "npm run test && npm run test:e2e"
+    "type-check": "tsc --noEmit",
+    "validate-schema": "node scripts/validate-schema.js",
+    "pre-commit": "npm run type-check && npm run test",
+    "pre-deploy": "npm run type-check && npm run test && npm run validate-schema"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
