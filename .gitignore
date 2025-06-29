@@ -99,6 +99,7 @@ vite.config.ts.*
 # Project specific
 roadmap.md
 DEVELOPMENT_WORKFLOW.md
+DEPLOYMENT.md
 
 # Database
 *.db

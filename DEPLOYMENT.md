@@ -28,7 +28,17 @@ This guide will help you deploy your ReadingRoadmap application to Vercel with S
 3. Paste and run the SQL script
 4. Verify tables are created in **Table Editor**
 
-### 1.3 Get API Keys
+### 1.3 Configure Authentication Settings
+
+1. Go to **Authentication** → **Settings**
+2. Set the **Site URL** to your production domain (e.g., `https://readingroadmap.vercel.app`)
+3. Add your production domain to **Redirect URLs**:
+   - `https://readingroadmap.vercel.app`
+   - `https://readingroadmap.vercel.app/auth/callback`
+4. Enable **Email confirmations** in the Email settings
+5. Configure custom email templates (optional but recommended)
+
+### 1.4 Get API Keys
 
 1. Go to **Settings** → **API**
 2. Copy the following values:
@@ -43,18 +53,27 @@ This guide will help you deploy your ReadingRoadmap application to Vercel with S
 2. Click "New Project"
 3. Import your GitHub repository
 4. Configure project settings:
-   - **Framework Preset**: Other
+   - **Framework Preset**: Next.js
    - **Root Directory**: `./` (leave empty)
    - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Output Directory**: `.next`
 
 ### 2.2 Set Environment Variables
 
 In Vercel project settings, add these environment variables:
 
 ```bash
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your-anon-key-here
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Site Configuration
+NEXT_PUBLIC_SITE_URL=https://readingroadmap.vercel.app
+
+# Supabase Auth Configuration (for production)
+SITE_URL=https://readingroadmap.vercel.app
+
+# Environment
 NODE_ENV=production
 ```
 
@@ -64,142 +83,74 @@ NODE_ENV=production
 2. Wait for build to complete
 3. Your app will be available at `https://your-project.vercel.app`
 
-## 🔧 Step 3: Update Client Configuration
+## 🔧 Step 3: Configure Email Templates (Optional)
 
-### 3.1 Update API Client
+For production, you can configure custom email templates in Supabase:
 
-The client needs to be updated to use the new API routes. Update your `client/src/lib/queryClient.ts`:
+1. Go to **Authentication** → **Email Templates**
+2. Customize the templates for:
+   - Confirm signup
+   - Magic link
+   - Password recovery
+   - Email change confirmation
 
-```typescript
-// Update API base URL for production
-const API_BASE = process.env.NODE_ENV === 'production' 
-  ? 'https://your-project.vercel.app/api'
-  : '/api'
-```
+## 📧 Step 4: Set up SMTP (Optional)
 
-### 3.2 Update Authentication
+For production email delivery, configure SMTP:
 
-Update your authentication context to work with Supabase sessions instead of Express sessions.
+1. Go to **Authentication** → **Settings** → **Email**
+2. Enable **SMTP**
+3. Configure your SMTP provider (SendGrid, Mailgun, etc.)
+4. Set sender email and name
 
-## 🧪 Step 4: Test Deployment
+## 🔄 Step 5: Update Local Development
 
-### 4.1 Test Authentication
-
-1. Visit your deployed app
-2. Try to register a new account
-3. Try to log in
-4. Verify data is saved in Supabase
-
-### 4.2 Test Core Features
-
-1. Add a book to your library
-2. Create a reading list (swimlane)
-3. Move books between lanes
-4. Check reading progress tracking
-
-## 🔒 Step 5: Security Configuration
-
-### 5.1 Supabase Row Level Security
-
-The migration script includes RLS policies, but verify they're working:
-
-1. Go to **Authentication** → **Policies** in Supabase
-2. Ensure all tables have appropriate policies
-3. Test that users can only access their own data
-
-### 5.2 Environment Variables
-
-Ensure all sensitive data is in environment variables:
-
-- ✅ `SUPABASE_URL`
-- ✅ `SUPABASE_ANON_KEY`
-- ❌ No hardcoded secrets
-
-## 📊 Step 6: Monitoring & Analytics
-
-### 6.1 Vercel Analytics
-
-1. Enable Vercel Analytics in project settings
-2. Monitor performance and errors
-
-### 6.2 Supabase Monitoring
-
-1. Check **Database** → **Logs** for queries
-2. Monitor **Authentication** → **Users**
-3. Set up alerts for unusual activity
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-#### Build Failures
-- Check Vercel build logs
-- Ensure all dependencies are in `package.json`
-- Verify TypeScript compilation
-
-#### Database Connection Issues
-- Verify Supabase URL and keys
-- Check network connectivity
-- Ensure RLS policies are correct
-
-#### Authentication Problems
-- Check Supabase auth settings
-- Verify JWT token handling
-- Test session management
-
-### Debug Commands
+After deploying, update your local `.env.local`:
 
 ```bash
-# Test local build
-npm run build
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
 
-# Check TypeScript errors
-npm run check
+# Site Configuration
+NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000
 
-# Test API routes locally
-npm run dev
+# Supabase Auth Configuration (for local development)
+SITE_URL=http://127.0.0.1:3000
+
+# Optional: For testing
+DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres
 ```
 
-## 📈 Performance Optimization
+## 🧪 Step 6: Test the Deployment
 
-### Bundle Size
-- Current bundle: ~611KB
-- Target: <500KB
-- Use dynamic imports for code splitting
+1. Visit your production URL
+2. Test user registration and email confirmation
+3. Verify email templates are working
+4. Test login and logout functionality
 
-### Database Performance
-- Add indexes for frequently queried columns
-- Use connection pooling
-- Monitor slow queries
+## 🔍 Troubleshooting
 
-## 🔄 Continuous Deployment
+### Email Not Sending
+- Check SMTP configuration in Supabase
+- Verify email templates are properly configured
+- Check spam folder for confirmation emails
 
-### GitHub Integration
-1. Connect GitHub repository to Vercel
-2. Enable automatic deployments
-3. Set up preview deployments for PRs
+### Redirect Issues
+- Ensure redirect URLs are correctly set in Supabase
+- Verify `NEXT_PUBLIC_SITE_URL` is set correctly
+- Check that the auth callback route is working
 
-### Environment Management
-- Use different Supabase projects for dev/staging/prod
-- Set up environment-specific variables
-- Test migrations before production
-
-## 💰 Cost Optimization
-
-### Vercel Pricing
-- **Hobby**: $0/month (good for personal projects)
-- **Pro**: $20/month (for teams)
-
-### Supabase Pricing
-- **Free**: $0/month (50MB database, 2GB bandwidth)
-- **Pro**: $25/month (8GB database, 250GB bandwidth)
+### Authentication Errors
+- Verify Supabase URL and keys are correct
+- Check that email confirmations are enabled
+- Ensure database schema is properly migrated
 
 ## 📚 Additional Resources
 
-- [Vercel Documentation](https://vercel.com/docs)
 - [Supabase Documentation](https://supabase.com/docs)
-- [Next.js API Routes](https://nextjs.org/docs/api-routes/introduction)
-- [Supabase JavaScript Client](https://supabase.com/docs/reference/javascript)
+- [Vercel Documentation](https://vercel.com/docs)
+- [Next.js Documentation](https://nextjs.org/docs)
 
 ## 🎯 Next Steps
 
