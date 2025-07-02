@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
@@ -13,12 +13,13 @@ interface BookCardProps {
 
 export function BookCard({ book }: BookCardProps) {
   const queryClient = useQueryClient();
-  const readingProgress = book.readingProgress || 0;
-  const [inputValue, setInputValue] = useState(String(readingProgress));
+  const initialProgress = book.readingProgress || 0;
+  // Ensure inputValue is always a string for the input element
+  const [inputValue, setInputValue] = useState<string>(initialProgress.toString());
 
   useEffect(() => {
-    setInputValue(String(readingProgress));
-  }, [readingProgress]);
+    setInputValue(initialProgress.toString());
+  }, [initialProgress]);
 
   const updateProgressMutation = useMutation({
     mutationFn: async (progress: number) => {
@@ -26,25 +27,44 @@ export function BookCard({ book }: BookCardProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/books"] });
-      // No need to manually update inputValue here if useEffect handles it,
-      // but if mutation is very fast, direct update might be desired.
-      // For now, relying on useEffect.
+      // Potentially refetch or update inputValue if the mutation leads to a new `book.readingProgress`
+      // However, the useEffect above should handle syncing when `book.readingProgress` (via `initialProgress`) changes.
     }
   });
 
-  const handleProgressUpdate = () => {
-    let value = parseInt(inputValue, 10);
-    if (isNaN(value)) {
-      value = 0;
+  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+
+    if (rawValue === "") {
+      setInputValue("");
+      // Do not mutate on empty string, user might be clearing to type a new number
+      return;
     }
-    if (value < 0) {
-      value = 0;
-    } else if (value > 100) {
-      value = 100;
+
+    const numericValue = parseInt(rawValue, 10);
+
+    if (isNaN(numericValue)) {
+      // If it's not a number and not empty (e.g. "abc"), display what user typed.
+      setInputValue(rawValue);
+      return;
     }
-    setInputValue(String(value)); // Update input field immediately with clamped value
-    updateProgressMutation.mutate(value);
+
+    let clampedValue = numericValue;
+    if (clampedValue < 0) {
+      clampedValue = 0;
+    } else if (clampedValue > 100) {
+      clampedValue = 100;
+    }
+
+    setInputValue(clampedValue.toString()); // Update input display with clamped value as string
+
+    // Only mutate if the clamped value is a valid number and different from the original progress
+    if (clampedValue !== initialProgress) {
+      updateProgressMutation.mutate(clampedValue);
+    }
   };
+
+  const readingProgress = book.readingProgress || 0;
 
   return (
     <Card className="overflow-hidden">
@@ -81,15 +101,31 @@ export function BookCard({ book }: BookCardProps) {
               <Input
                 type="number"
                 value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onBlur={handleProgressUpdate}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault(); // Prevent form submission if any
-                    handleProgressUpdate();
+                onChange={handleProgressChange}
+                onBlur={() => {
+                  if (inputValue === "") {
+                    setInputValue(initialProgress.toString());
+                    return;
+                  }
+                  const currentNumericValue = parseInt(inputValue, 10); // inputValue is already string
+                  if (isNaN(currentNumericValue)) {
+                    setInputValue(initialProgress.toString()); // Reset to original progress on blur if invalid
+                  } else {
+                    // Ensure a clean string representation of the number (e.g. "05" -> "5")
+                    // This also handles if currentNumericValue was clamped from something invalid user typed.
+                    setInputValue(currentNumericValue.toString());
+
+                    // If the value on blur (which is now clean and numeric)
+                    // is different from initialProgress and hasn't been mutated yet,
+                    // one might consider mutating. However, onChange should have caught most cases.
+                    // This primarily ensures the display is clean.
+                    // For instance, if user types "50", then "50   " (spaces),
+                    // parseInt gives 50. Then setInputValue("50") cleans it up.
                   }
                 }}
-                // className="w-full" // Removed for testing
+                min={0}
+                max={100}
+                className="w-full"
               />
             </div>
           )}
