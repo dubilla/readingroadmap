@@ -264,7 +264,7 @@ export default function HomePage() {
       <main className="flex-1 p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
           <header className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">Reading Roadmap</h1>
+            <h1 className="text-4xl font-bold tracking-tight">📚 Reading Roadmap</h1>
             <p className="text-muted-foreground">
               Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Here's your reading journey
             </p>
