@@ -1,7 +1,8 @@
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { formatReadingTime, formatProgress } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import type { Book } from "@shared/schema";
@@ -12,6 +13,12 @@ interface BookCardProps {
 
 export function BookCard({ book }: BookCardProps) {
   const queryClient = useQueryClient();
+  const readingProgress = book.readingProgress || 0;
+  const [inputValue, setInputValue] = useState(String(readingProgress));
+
+  useEffect(() => {
+    setInputValue(String(readingProgress));
+  }, [readingProgress]);
 
   const updateProgressMutation = useMutation({
     mutationFn: async (progress: number) => {
@@ -19,10 +26,25 @@ export function BookCard({ book }: BookCardProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/books"] });
+      // No need to manually update inputValue here if useEffect handles it,
+      // but if mutation is very fast, direct update might be desired.
+      // For now, relying on useEffect.
     }
   });
 
-  const readingProgress = book.readingProgress || 0;
+  const handleProgressUpdate = () => {
+    let value = parseInt(inputValue, 10);
+    if (isNaN(value)) {
+      value = 0;
+    }
+    if (value < 0) {
+      value = 0;
+    } else if (value > 100) {
+      value = 100;
+    }
+    setInputValue(String(value)); // Update input field immediately with clamped value
+    updateProgressMutation.mutate(value);
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -56,12 +78,18 @@ export function BookCard({ book }: BookCardProps) {
                   {formatProgress(readingProgress)}
                 </span>
               </div>
-              <Slider
-                value={[readingProgress]}
-                min={0}
-                max={100}
-                step={1}
-                onValueChange={([value]) => updateProgressMutation.mutate(value)}
+              <Input
+                type="number"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onBlur={handleProgressUpdate}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent form submission if any
+                    handleProgressUpdate();
+                  }
+                }}
+                // className="w-full" // Removed for testing
               />
             </div>
           )}
