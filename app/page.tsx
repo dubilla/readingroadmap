@@ -203,7 +203,7 @@ export default function HomePage() {
         </div>
         
         {books && books.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {books.slice(-4).reverse().map(book => (
               <Card key={book.id} className="overflow-hidden">
                 <div className="aspect-[3/4] relative">
@@ -213,9 +213,9 @@ export default function HomePage() {
                     className="absolute inset-0 w-full h-full object-cover"
                   />
                 </div>
-                <CardContent className="p-4">
-                  <h4 className="font-semibold line-clamp-1">{book.title}</h4>
-                  <p className="text-sm text-muted-foreground line-clamp-1">{book.author}</p>
+                <CardContent className="p-3 sm:p-4">
+                  <h4 className="font-semibold line-clamp-1 text-sm sm:text-base">{book.title}</h4>
+                  <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">{book.author}</p>
                 </CardContent>
               </Card>
             ))}

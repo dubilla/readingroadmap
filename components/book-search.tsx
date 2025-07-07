@@ -184,7 +184,7 @@ export function BookSearch() {
           Add Book
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Search Books</DialogTitle>
         </DialogHeader>
@@ -198,7 +198,7 @@ export function BookSearch() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div className="space-y-4 max-h-[400px] overflow-y-auto">
+          <div className="space-y-4 max-h-[60vh] sm:max-h-[400px] overflow-y-auto">
             {isSearching ? (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -208,18 +208,18 @@ export function BookSearch() {
             ) : results.length > 0 ? (
               results.map((book, index) => (
                 <Card key={`${book.title}-${index}`} className="overflow-hidden">
-                  <CardContent className="p-4 flex gap-4">
+                  <CardContent className="p-4 flex gap-3 sm:gap-4">
                     <img
                       src={book.coverUrl}
                       alt={book.title}
-                      className="w-16 h-24 object-cover flex-shrink-0"
+                      className="w-12 h-18 sm:w-16 sm:h-24 object-cover flex-shrink-0"
                     />
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold truncate">{book.title}</h4>
-                      <p className="text-sm text-muted-foreground">
+                      <h4 className="font-semibold truncate text-sm sm:text-base">{book.title}</h4>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {book.author}
                       </p>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {book.pages} pages
                       </p>
                       {book.isLocal && (
@@ -234,6 +234,7 @@ export function BookSearch() {
                         size="sm"
                         onClick={() => handleAddBook(book)}
                         disabled={addBookMutation.isPending}
+                        className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
                       >
                         Add
                       </Button>
