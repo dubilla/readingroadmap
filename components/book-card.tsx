@@ -34,14 +34,14 @@ export function BookCard({ book }: BookCardProps) {
         />
       </div>
 
-      <CardContent className="p-4 space-y-4">
+      <CardContent className="p-3 sm:p-4 space-y-3 sm:space-y-4">
         <div>
-          <h4 className="font-semibold leading-tight">{book.title}</h4>
-          <p className="text-sm text-muted-foreground">{book.author}</p>
+          <h4 className="font-semibold leading-tight text-sm sm:text-base">{book.title}</h4>
+          <p className="text-xs sm:text-sm text-muted-foreground">{book.author}</p>
         </div>
 
         <div className="space-y-2">
-          <div className="flex justify-between text-sm">
+          <div className="flex justify-between text-xs sm:text-sm">
             <span>Reading Time</span>
             <span className="text-muted-foreground">
               {formatReadingTime(book.estimatedMinutes)}
@@ -50,7 +50,7 @@ export function BookCard({ book }: BookCardProps) {
 
           {book.status === "reading" && (
             <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs sm:text-sm">
                 <span>Progress</span>
                 <span className="text-muted-foreground">
                   {formatProgress(readingProgress)}
