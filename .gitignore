@@ -100,6 +100,8 @@ vite.config.ts.*
 roadmap.md
 DEVELOPMENT_WORKFLOW.md
 DEPLOYMENT.md
+PRD.md
+BACKLOG.md
 
 # Database
 *.db
@@ -110,3 +112,6 @@ DEPLOYMENT.md
 *.backup
 .env.local.backup
 .vercel
+
+# Claude
+.claude/commands
