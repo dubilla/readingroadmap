@@ -6,20 +6,21 @@ export const supabase = createBrowserClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-// Server-side Supabase client (for API routes)
+// Server-side Supabase client (for API routes) - read-only cookie access
 export function createServerSupabaseClient(request: Request) {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.headers.get('cookie')?.split(';').find(c => c.trim().startsWith(`${name}=`))?.split('=')[1]
+        getAll() {
+          const cookieHeader = request.headers.get('cookie') || ''
+          return cookieHeader.split(';').map(c => {
+            const [name, ...rest] = c.trim().split('=')
+            return { name, value: rest.join('=') }
+          }).filter(c => c.name)
         },
-        set(name: string, value: string, options: any) {
-          // This is handled by the middleware
-        },
-        remove(name: string, options: any) {
+        setAll() {
           // This is handled by the middleware
         },
       },

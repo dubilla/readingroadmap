@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useQuery } from "@tanstack/react-query"
 import { ReadingBoard } from "../components/reading-board"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card"
+import { Card, CardContent } from "../components/ui/card"
 import { Skeleton } from "../components/ui/skeleton"
 import { Button } from "../components/ui/button"
 import { BookSearch } from "../components/book-search"
@@ -30,7 +30,7 @@ export default function HomePage() {
           setUser(null)
           setIsAuthenticated(false)
         }
-      } catch (error) {
+      } catch {
         setUser(null)
         setIsAuthenticated(false)
       }
@@ -96,7 +96,7 @@ export default function HomePage() {
                   <BookOpen className="h-8 w-8 mx-auto mb-3 text-blue-600" />
                   <h3 className="font-semibold mb-2">Track Your Reading</h3>
                   <p className="text-sm text-muted-foreground">
-                    Keep track of what you're reading and your progress
+                    Keep track of what you&apos;re reading and your progress
                   </p>
                 </CardContent>
               </Card>
@@ -266,7 +266,7 @@ export default function HomePage() {
           <header className="space-y-2">
             <h1 className="text-4xl font-bold tracking-tight">Reading Roadmap</h1>
             <p className="text-muted-foreground">
-              Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Here's your reading journey
+              Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Here&apos;s your reading journey
             </p>
           </header>
 

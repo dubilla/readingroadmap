@@ -26,10 +26,10 @@ export async function GET(
           get(name: string) {
             return request.cookies.get(name)?.value
           },
-          set(name: string, value: string, options: any) {
+          set(_name: string, _value: string, _options: any) {
             // This is handled by the middleware
           },
-          remove(name: string, options: any) {
+          remove(_name: string, _options: any) {
             // This is handled by the middleware
           },
         },
@@ -93,10 +93,10 @@ export async function PUT(
           get(name: string) {
             return request.cookies.get(name)?.value
           },
-          set(name: string, value: string, options: any) {
+          set(_name: string, _value: string, _options: any) {
             // This is handled by the middleware
           },
-          remove(name: string, options: any) {
+          remove(_name: string, _options: any) {
             // This is handled by the middleware
           },
         },
@@ -170,10 +170,10 @@ export async function DELETE(
           get(name: string) {
             return request.cookies.get(name)?.value
           },
-          set(name: string, value: string, options: any) {
+          set(_name: string, _value: string, _options: any) {
             // This is handled by the middleware
           },
-          remove(name: string, options: any) {
+          remove(_name: string, _options: any) {
             // This is handled by the middleware
           },
         },

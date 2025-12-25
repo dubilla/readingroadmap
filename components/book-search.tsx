@@ -48,7 +48,7 @@ export function BookSearch() {
       try {
         const response = await fetch('/api/auth/me');
         setIsAuthenticated(response.ok);
-      } catch (error) {
+      } catch {
         setIsAuthenticated(false);
       }
     };
@@ -108,8 +108,8 @@ export function BookSearch() {
         // Ensure openLibraryBooks is an array
         openLibraryBooks = Array.isArray(openLibraryBooks) ? openLibraryBooks : [];
         console.log('🌐 Open Library books found:', openLibraryBooks.length);
-      } catch (error) {
-        console.error('❌ Open Library search failed:', error);
+      } catch (err) {
+        console.error('❌ Open Library search failed:', err);
         openLibraryBooks = [];
       }
 
@@ -144,8 +144,8 @@ export function BookSearch() {
 
       console.log('✅ Final combined results:', combinedResults.length);
       setResults(combinedResults);
-    } catch (error) {
-      console.error("❌ Error searching books:", error);
+    } catch (err) {
+      console.error("❌ Error searching books:", err);
       setResults([]);
     } finally {
       setIsSearching(false);

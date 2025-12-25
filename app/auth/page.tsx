@@ -79,7 +79,7 @@ function AuthForm() {
         })
         router.push('/')
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An error occurred during login",
@@ -126,7 +126,7 @@ function AuthForm() {
           router.push('/')
         }
       }
-    } catch (error) {
+    } catch {
       toast({
         title: "Error",
         description: "An error occurred during registration",
