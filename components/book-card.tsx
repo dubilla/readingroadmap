@@ -7,9 +7,10 @@ import type { Book } from "@shared/schema";
 
 interface BookCardProps {
   book: Book;
+  onTap?: (book: Book) => void;
 }
 
-export function BookCard({ book }: BookCardProps) {
+export function BookCard({ book, onTap }: BookCardProps) {
   const queryClient = useQueryClient();
 
   const updateProgressMutation = useMutation({
@@ -23,8 +24,19 @@ export function BookCard({ book }: BookCardProps) {
 
   const readingProgress = book.readingProgress || 0;
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Don't trigger if clicking on the slider
+    if ((e.target as HTMLElement).closest('[role="slider"]')) {
+      return;
+    }
+    onTap?.(book);
+  };
+
   return (
-    <Card className="overflow-hidden">
+    <Card
+      className={`overflow-hidden ${onTap ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
+      onClick={handleCardClick}
+    >
       <div className="aspect-[3/4] relative">
         <img
           src={book.coverUrl}

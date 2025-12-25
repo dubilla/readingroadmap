@@ -270,15 +270,15 @@ export default function HomePage() {
             </p>
           </header>
 
-          <div className="flex border-b mb-6">
+          <div className="flex border-b mb-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto">
             <button
-              className={`px-4 py-2 font-medium ${activeTab === "dashboard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+              className={`px-4 py-2 font-medium cursor-pointer whitespace-nowrap ${activeTab === "dashboard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
               onClick={() => setActiveTab("dashboard")}
             >
               Dashboard
             </button>
             <button
-              className={`px-4 py-2 font-medium ${activeTab === "readingBoard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
+              className={`px-4 py-2 font-medium cursor-pointer whitespace-nowrap ${activeTab === "readingBoard" ? "text-primary border-b-2 border-primary" : "text-muted-foreground"}`}
               onClick={() => setActiveTab("readingBoard")}
             >
               Reading Board

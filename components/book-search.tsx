@@ -184,7 +184,7 @@ export function BookSearch() {
           Add Book
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] sm:max-w-2xl">
+      <DialogContent className="max-w-2xl sm:w-[95vw]">
         <DialogHeader>
           <DialogTitle>Search Books</DialogTitle>
         </DialogHeader>
@@ -198,53 +198,59 @@ export function BookSearch() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div className="space-y-4 max-h-[60vh] sm:max-h-[400px] overflow-y-auto">
+          <div className="space-y-3 max-h-[50vh] sm:max-h-[400px] overflow-y-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             {isSearching ? (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-24" />
+                  <Skeleton key={i} className="h-20 sm:h-24" />
                 ))}
               </div>
             ) : results.length > 0 ? (
               results.map((book, index) => (
                 <Card key={`${book.title}-${index}`} className="overflow-hidden">
-                  <CardContent className="p-4 flex gap-3 sm:gap-4">
-                    <img
-                      src={book.coverUrl}
-                      alt={book.title}
-                      className="w-12 h-18 sm:w-16 sm:h-24 object-cover flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold truncate text-sm sm:text-base">{book.title}</h4>
-                      <p className="text-xs sm:text-sm text-muted-foreground">
-                        {book.author}
-                      </p>
-                      <p className="text-xs sm:text-sm text-muted-foreground">
-                        {book.pages} pages
-                      </p>
-                      {book.isLocal && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Already in your library
-                        </p>
-                      )}
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex gap-3">
+                      <img
+                        src={book.coverUrl}
+                        alt={book.title}
+                        className="w-12 h-[72px] sm:w-16 sm:h-24 object-cover flex-shrink-0 rounded"
+                      />
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <div>
+                          <h4 className="font-semibold line-clamp-2 text-sm sm:text-base leading-tight">{book.title}</h4>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                            {book.author}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {book.pages} pages
+                          </p>
+                        </div>
+                        {book.isLocal ? (
+                          <p className="text-xs text-muted-foreground">
+                            Already in your library
+                          </p>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleAddBook(book)}
+                            disabled={addBookMutation.isPending}
+                            className="self-start mt-1 text-xs h-7 px-3 cursor-pointer"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    {!book.isLocal && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAddBook(book)}
-                        disabled={addBookMutation.isPending}
-                        className="flex-shrink-0 text-xs sm:text-sm px-2 sm:px-3"
-                      >
-                        Add
-                      </Button>
-                    )}
                   </CardContent>
                 </Card>
               ))
             ) : query ? (
-              <p className="text-center text-muted-foreground">No books found</p>
-            ) : null}
+              <p className="text-center text-muted-foreground py-8">No books found</p>
+            ) : (
+              <p className="text-center text-muted-foreground py-8">Start typing to search for books</p>
+            )}
           </div>
         </div>
       </DialogContent>
