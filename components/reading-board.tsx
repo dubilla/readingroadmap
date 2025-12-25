@@ -1,6 +1,7 @@
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookCard } from "./book-card";
+import { BookActionDrawer } from "./book-action-drawer";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -13,6 +14,7 @@ import type { Book, UserLane, InsertUserLane } from "@shared/schema";
 import { insertUserLaneSchema } from "@shared/schema";
 import { BookSearch } from "./book-search";
 import { useState, useEffect } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ReadingBoardProps {
   books: Book[];
@@ -22,6 +24,9 @@ interface ReadingBoardProps {
 export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
   const queryClient = useQueryClient();
   const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const isMobile = useIsMobile();
 
   // Get current user
   useEffect(() => {
@@ -147,7 +152,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
                   {...provided.draggableProps}
                   {...provided.dragHandleProps}
                 >
-                  <BookCard book={book} />
+                  <BookCard book={book} onTap={isMobile ? handleBookTap : undefined} />
                 </div>
               )}
             </Draggable>
@@ -159,12 +164,25 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
 
   const handleCreateLane = (data: { name: string; order: number }) => {
     if (!currentUser) return;
-    
+
     createUserLane.mutate({
       name: data.name,
       userId: currentUser.id,
       order: data.order
     });
+  };
+
+  const handleBookTap = (book: Book) => {
+    setSelectedBook(book);
+    setDrawerOpen(true);
+  };
+
+  const handleStatusChange = (bookId: number, status: string) => {
+    updateBookStatusMutation.mutate({ bookId, status });
+  };
+
+  const handleLaneChange = (bookId: number, laneId: number | null) => {
+    updateBookLaneMutation.mutate({ bookId, laneId });
   };
 
   return (
@@ -259,7 +277,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
                   {...provided.droppableProps}
                   className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg"
                 >
-                  {Array.from(completedByLane.entries()).map(([laneId, books]) => 
+                  {Array.from(completedByLane.entries()).map(([laneId, books]) =>
                     renderLaneSection(books, laneId, "completed")
                   )}
                   {provided.placeholder}
@@ -269,6 +287,16 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
           </div>
         </div>
       </DragDropContext>
+
+      {/* Mobile Book Action Drawer */}
+      <BookActionDrawer
+        book={selectedBook}
+        userLanes={userLanes}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onStatusChange={handleStatusChange}
+        onLaneChange={handleLaneChange}
+      />
     </div>
   );
 }
