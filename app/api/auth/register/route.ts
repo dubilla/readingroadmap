@@ -31,10 +31,10 @@ export async function POST(request: NextRequest) {
           get(name: string) {
             return request.cookies.get(name)?.value
           },
-          set(name: string, value: string, options: any) {
+          set(_name: string, _value: string, _options: any) {
             // This is handled by the middleware
           },
-          remove(name: string, options: any) {
+          remove(_name: string, _options: any) {
             // This is handled by the middleware
           },
         },
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     // Supabase middleware will handle setting the session cookies
     return response
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

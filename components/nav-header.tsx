@@ -29,7 +29,7 @@ export function NavHeader() {
         } else {
           setUser(null);
         }
-      } catch (error) {
+      } catch {
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -43,8 +43,8 @@ export function NavHeader() {
       await fetch('/api/auth/logout', { method: 'POST' });
       setUser(null);
       router.push('/');
-    } catch (error) {
-      console.error('Logout error:', error);
+    } catch (err) {
+      console.error('Logout error:', err);
     }
   };
 

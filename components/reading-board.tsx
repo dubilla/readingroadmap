@@ -1,5 +1,5 @@
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookCard } from "./book-card";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -75,7 +75,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     }
   });
 
-  const onDragEnd = (result: any) => {
+  const onDragEnd = (result: DropResult) => {
     if (!result.destination) return;
 
     const bookId = parseInt(result.draggableId);

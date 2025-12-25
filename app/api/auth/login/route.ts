@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     const { email, password } = result.data
 
     // Create response first
-    let response = NextResponse.next()
+    const response = NextResponse.next()
 
     // Create Supabase server client
     const supabase = createServerClient(
