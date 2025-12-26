@@ -9,12 +9,13 @@ import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
-import type { Book, UserLane, InsertUserLane } from "@shared/schema";
-import { insertUserLaneSchema } from "@shared/schema";
+import type { Book, UserLane } from "@shared/schema";
 import { BookSearch } from "./book-search";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
 
 interface ReadingBoardProps {
   books: Book[];
@@ -23,26 +24,11 @@ interface ReadingBoardProps {
 
 export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
   const queryClient = useQueryClient();
-  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [createLaneOpen, setCreateLaneOpen] = useState(false);
   const isMobile = useIsMobile();
-
-  // Get current user
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentUser(data.user);
-        }
-      } catch (error) {
-        console.error('Error fetching user:', error);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { toast } = useToast();
 
   const updateBookStatusMutation = useMutation({
     mutationFn: async ({ bookId, status }: { bookId: number; status: string }) => {
@@ -62,8 +48,13 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     }
   });
 
+  const createLaneSchema = z.object({
+    name: z.string().min(1),
+    order: z.number(),
+  });
+
   const createUserLaneForm = useForm({
-    resolver: zodResolver(insertUserLaneSchema),
+    resolver: zodResolver(createLaneSchema),
     defaultValues: {
       name: "",
       order: userLanes.length
@@ -71,12 +62,14 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
   });
 
   const createUserLane = useMutation({
-    mutationFn: async (userLane: InsertUserLane) => {
-      await apiRequest("POST", "/api/lanes", userLane);
+    mutationFn: async (data: { name: string; order: number }) => {
+      await apiRequest("POST", "/api/lanes", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lanes"] });
       createUserLaneForm.reset();
+      setCreateLaneOpen(false);
+      toast({ title: "Lane created" });
     }
   });
 
@@ -163,13 +156,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
   };
 
   const handleCreateLane = (data: { name: string; order: number }) => {
-    if (!currentUser) return;
-
-    createUserLane.mutate({
-      name: data.name,
-      userId: currentUser.id,
-      order: data.order
-    });
+    createUserLane.mutate(data);
   };
 
   const handleBookTap = (book: Book) => {
@@ -190,9 +177,9 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
       {/* Create User Lane */}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Reading Board</h2>
-        <Dialog>
+        <Dialog open={createLaneOpen} onOpenChange={setCreateLaneOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" className="cursor-pointer">
               <Plus className="h-4 w-4 mr-2" />
               Create Lane
             </Button>
@@ -215,7 +202,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={createUserLane.isPending}>
+                <Button type="submit" disabled={createUserLane.isPending} className="cursor-pointer">
                   Create Lane
                 </Button>
               </form>

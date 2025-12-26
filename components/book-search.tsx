@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { searchBooks, getCoverImageUrl } from "@/lib/openLibrary";
 import type { Book } from "@shared/schema";
@@ -41,6 +42,7 @@ export function BookSearch() {
   const debouncedQuery = useDebounce(query, 300);
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { toast } = useToast();
 
   // Check authentication status
   useEffect(() => {
@@ -69,6 +71,7 @@ export function BookSearch() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/books"] });
       setOpen(false);
+      toast({ title: "Book added" });
     }
   });
 
