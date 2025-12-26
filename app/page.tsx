@@ -8,8 +8,10 @@ import { Skeleton } from "../components/ui/skeleton"
 import { Button } from "../components/ui/button"
 import { BookSearch } from "../components/book-search"
 import { NavHeader } from "../components/nav-header"
-import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, ArrowRight, BookMarked } from "lucide-react"
-import type { Book, UserLane } from "../shared/schema"
+import { GoalCard } from "../components/goal-card"
+import { GoalForm } from "../components/goal-form"
+import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, ArrowRight, BookMarked, Plus, Target } from "lucide-react"
+import type { Book, UserLane, ReadingGoal } from "../shared/schema"
 import { useRouter } from "next/navigation"
 
 export default function HomePage() {
@@ -47,9 +49,29 @@ export default function HomePage() {
     queryKey: ["/api/lanes"],
     enabled: isAuthenticated === true // Only fetch if authenticated
   })
-  
+
+  const currentYear = new Date().getFullYear()
+  const { data: goals, isLoading: goalsLoading } = useQuery<ReadingGoal[]>({
+    queryKey: ["/api/goals", { year: currentYear }],
+    enabled: isAuthenticated === true
+  })
+
   const [activeTab, setActiveTab] = useState("dashboard")
-  const isLoading = isAuthenticated === null || (isAuthenticated && (booksLoading || lanesLoading))
+  const [goalFormOpen, setGoalFormOpen] = useState(false)
+  const [editingGoal, setEditingGoal] = useState<ReadingGoal | null>(null)
+  const isLoading = isAuthenticated === null || (isAuthenticated && (booksLoading || lanesLoading || goalsLoading))
+
+  const handleEditGoal = (goal: ReadingGoal) => {
+    setEditingGoal(goal)
+    setGoalFormOpen(true)
+  }
+
+  const handleGoalFormClose = (open: boolean) => {
+    setGoalFormOpen(open)
+    if (!open) {
+      setEditingGoal(null)
+    }
+  }
   
   // Show loading state
   if (isLoading) {
@@ -149,6 +171,50 @@ export default function HomePage() {
 
   const renderDashboard = () => (
     <div className="space-y-6">
+      {/* Reading Goals Section */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-xl font-semibold flex items-center gap-2">
+            <Target className="h-5 w-5" />
+            Reading Goals
+          </h3>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setGoalFormOpen(true)}
+            className="cursor-pointer"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Set Goal
+          </Button>
+        </div>
+
+        {goals && goals.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {goals.map(goal => (
+              <GoalCard key={goal.id} goal={goal} onEdit={handleEditGoal} />
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <CardContent className="p-6 text-center">
+              <Target className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+              <h4 className="font-semibold mb-2">No reading goals yet</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Set a reading goal to track your progress this year
+              </p>
+              <Button
+                onClick={() => setGoalFormOpen(true)}
+                className="cursor-pointer"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Set Your First Goal
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-blue-50 dark:bg-blue-950/30">
           <CardContent className="p-6 flex flex-col">
@@ -296,6 +362,12 @@ export default function HomePage() {
           )}
         </div>
       </main>
+
+      <GoalForm
+        open={goalFormOpen}
+        onOpenChange={handleGoalFormClose}
+        editingGoal={editingGoal}
+      />
     </div>
   )
 } 
