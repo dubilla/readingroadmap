@@ -65,8 +65,8 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     mutationFn: async (data: { name: string; order: number }) => {
       await apiRequest("POST", "/api/lanes", data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/lanes"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/lanes"] });
       createUserLaneForm.reset();
       setCreateLaneOpen(false);
       toast({ title: "Lane created" });
@@ -78,14 +78,26 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
 
     const bookId = parseInt(result.draggableId);
     const destinationId = result.destination.droppableId;
-    
-    // Parse the destination to determine if it's a status or lane
-    if (destinationId.startsWith('status-')) {
-      const status = destinationId.replace('status-', '');
-      updateBookStatusMutation.mutate({ bookId, status });
-    } else if (destinationId.startsWith('lane-')) {
-      const laneId = parseInt(destinationId.replace('lane-', ''));
+
+    // Parse the destination - format is "lane-{laneId}-{status}"
+    if (destinationId.startsWith('lane-')) {
+      // Format: lane-{laneId}-{status}
+      const parts = destinationId.split('-');
+      const laneIdStr = parts[1];
+      const status = parts.slice(2).join('-'); // Handle "to-read" with hyphen
+      const laneId = laneIdStr === 'default' ? null : parseInt(laneIdStr);
+
+      // Get current book to check if status changed
+      const book = books.find(b => b.id === bookId);
+      const currentStatus = book?.status;
+
+      // Update lane
       updateBookLaneMutation.mutate({ bookId, laneId });
+
+      // Update status if it changed
+      if (currentStatus !== status) {
+        updateBookStatusMutation.mutate({ bookId, status });
+      }
     }
   };
 
@@ -127,30 +139,48 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     return lane?.name || "Unknown Lane";
   };
 
-  const renderLaneSection = (books: Book[], laneId: number | null, status: string) => {
-    const laneBooks = books.filter(book => book.laneId === laneId);
-    if (laneBooks.length === 0) return null;
+  const renderLaneSection = (laneId: number | null, status: string, allBooks: Book[]) => {
+    const laneBooks = allBooks.filter(book => book.laneId === laneId);
+    const isEmpty = laneBooks.length === 0;
 
     return (
       <div key={`${status}-${laneId}`} className="space-y-2">
         <h4 className="text-sm font-medium text-muted-foreground">
           {getLaneName(laneId)}
         </h4>
-        <div className="space-y-2">
-          {laneBooks.map((book, index) => (
-            <Draggable key={book.id} draggableId={book.id.toString()} index={index}>
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.draggableProps}
-                  {...provided.dragHandleProps}
-                >
-                  <BookCard book={book} onTap={isMobile ? handleBookTap : undefined} />
-                </div>
+        <Droppable droppableId={`lane-${laneId ?? 'default'}-${status}`}>
+          {(provided, snapshot) => (
+            <div
+              ref={provided.innerRef}
+              {...provided.droppableProps}
+              className={`space-y-2 rounded-md border-2 border-dashed transition-colors ${
+                snapshot.isDraggingOver
+                  ? "border-primary bg-primary/5"
+                  : "border-transparent"
+              } ${isEmpty ? "min-h-[40px] p-2" : "min-h-[80px] p-2"}`}
+            >
+              {laneBooks.map((book, index) => (
+                <Draggable key={book.id} draggableId={book.id.toString()} index={index}>
+                  {(provided) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                    >
+                      <BookCard book={book} onTap={isMobile ? handleBookTap : undefined} />
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {provided.placeholder}
+              {isEmpty && (
+                <p className="text-xs text-muted-foreground/50 text-center">
+                  Drop books here
+                </p>
               )}
-            </Draggable>
-          ))}
-        </div>
+            </div>
+          )}
+        </Droppable>
       </div>
     );
   };
@@ -219,58 +249,31 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
               <h3 className="text-lg font-semibold">To Read</h3>
               <BookSearch />
             </div>
-            <Droppable droppableId="status-to-read">
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg"
-                >
-                  {Array.from(toReadByLane.entries()).map(([laneId, books]) => 
-                    renderLaneSection(books, laneId, "to-read")
-                  )}
-                  {provided.placeholder}
-                </div>
+            <div className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg">
+              {Array.from(toReadByLane.entries()).map(([laneId]) =>
+                renderLaneSection(laneId, "to-read", toReadBooks)
               )}
-            </Droppable>
+            </div>
           </div>
 
           {/* In Progress Column */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">In Progress</h3>
-            <Droppable droppableId="status-reading">
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg"
-                >
-                  {Array.from(inProgressByLane.entries()).map(([laneId, books]) => 
-                    renderLaneSection(books, laneId, "reading")
-                  )}
-                  {provided.placeholder}
-                </div>
+            <div className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg">
+              {Array.from(inProgressByLane.entries()).map(([laneId]) =>
+                renderLaneSection(laneId, "reading", inProgressBooks)
               )}
-            </Droppable>
+            </div>
           </div>
 
           {/* Completed Column */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">Completed</h3>
-            <Droppable droppableId="status-completed">
-              {(provided) => (
-                <div
-                  ref={provided.innerRef}
-                  {...provided.droppableProps}
-                  className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg"
-                >
-                  {Array.from(completedByLane.entries()).map(([laneId, books]) =>
-                    renderLaneSection(books, laneId, "completed")
-                  )}
-                  {provided.placeholder}
-                </div>
+            <div className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg">
+              {Array.from(completedByLane.entries()).map(([laneId]) =>
+                renderLaneSection(laneId, "completed", completedBooks)
               )}
-            </Droppable>
+            </div>
           </div>
         </div>
       </DragDropContext>
