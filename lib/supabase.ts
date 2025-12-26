@@ -175,6 +175,35 @@ export type Database = {
           updated_at?: string
         }
       }
+      reading_goals: {
+        Row: {
+          id: number
+          user_id: string
+          goal_type: 'books' | 'pages'
+          target_count: number
+          year: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          user_id: string
+          goal_type: 'books' | 'pages'
+          target_count: number
+          year: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          user_id?: string
+          goal_type?: 'books' | 'pages'
+          target_count?: number
+          year?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 } 

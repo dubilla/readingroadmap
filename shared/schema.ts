@@ -45,6 +45,23 @@ export interface User {
   createdAt: string;
 }
 
+export type GoalType = 'books' | 'pages';
+
+export interface ReadingGoal {
+  id: number;
+  userId: string;
+  goalType: GoalType;
+  targetCount: number;
+  year: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReadingGoalWithProgress extends ReadingGoal {
+  currentCount: number;
+  progressPercentage: number;
+}
+
 // Zod schemas for validation (API layer - camelCase)
 export const insertUserSchema = z.object({
   email: z.string().email(),
@@ -71,7 +88,21 @@ export const insertBookSchema = z.object({
   estimatedMinutes: z.number(),
 });
 
+export const insertReadingGoalSchema = z.object({
+  goalType: z.enum(['books', 'pages']),
+  targetCount: z.number().min(1),
+  year: z.number().min(2000).max(2100),
+});
+
+export const updateReadingGoalSchema = z.object({
+  goalType: z.enum(['books', 'pages']).optional(),
+  targetCount: z.number().min(1).optional(),
+  year: z.number().min(2000).max(2100).optional(),
+});
+
 // Type exports
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertUserLane = z.infer<typeof insertUserLaneSchema>;
 export type InsertBook = z.infer<typeof insertBookSchema>;
+export type InsertReadingGoal = z.infer<typeof insertReadingGoalSchema>;
+export type UpdateReadingGoal = z.infer<typeof updateReadingGoalSchema>;

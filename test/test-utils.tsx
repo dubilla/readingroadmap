@@ -71,4 +71,23 @@ export const mockSwimlane = {
   description: 'Personal reading list',
   order: 0,
   userId: 1,
+}
+
+export const mockGoal = {
+  id: 1,
+  userId: 'user-123',
+  goalType: 'books' as const,
+  targetCount: 50,
+  year: 2025,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
+
+export const mockGoalProgress = {
+  goalId: 1,
+  goalType: 'books' as const,
+  targetCount: 50,
+  currentCount: 12,
+  progressPercentage: 24,
+  year: 2025,
 } 
