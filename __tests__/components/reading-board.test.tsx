@@ -11,10 +11,12 @@ jest.mock('../../lib/queryClient', () => ({
 
 // Mock useQueryClient
 const mockInvalidateQueries = jest.fn()
+const mockRefetchQueries = jest.fn().mockResolvedValue(undefined)
 jest.mock('@tanstack/react-query', () => ({
   ...jest.requireActual('@tanstack/react-query'),
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
+    refetchQueries: mockRefetchQueries,
   }),
 }))
 
@@ -25,12 +27,20 @@ jest.mock('@hello-pangea/dnd', () => ({
     (global as unknown as { __onDragEnd: typeof onDragEnd }).__onDragEnd = onDragEnd
     return <div data-testid="drag-drop-context">{children}</div>
   },
-  Droppable: ({ children, droppableId }: { children: (provided: unknown) => React.ReactNode; droppableId: string }) =>
-    children({
-      innerRef: jest.fn(),
-      droppableProps: { 'data-droppable-id': droppableId },
-      placeholder: null,
-    }),
+  Droppable: ({ children, droppableId }: { children: (provided: unknown, snapshot: unknown) => React.ReactNode; droppableId: string }) =>
+    children(
+      {
+        innerRef: jest.fn(),
+        droppableProps: { 'data-droppable-id': droppableId },
+        placeholder: null,
+      },
+      {
+        isDraggingOver: false,
+        draggingOverWith: null,
+        draggingFromThisWith: null,
+        isUsingPlaceholder: false,
+      }
+    ),
   Draggable: ({ children, draggableId }: { children: (provided: unknown) => React.ReactNode; draggableId: string }) =>
     children({
       innerRef: jest.fn(),
@@ -152,16 +162,18 @@ describe('ReadingBoard', () => {
   })
 
   describe('Lane organization', () => {
-    it('displays default lane as "Wild & Free"', () => {
+    it('displays default lane as "Wild & Free" in all columns', () => {
       render(<ReadingBoard books={[toReadBook]} userLanes={[]} />)
 
-      expect(screen.getByText('📚 Wild & Free')).toBeInTheDocument()
+      // Default lane appears in all 3 status columns
+      expect(screen.getAllByText('📚 Wild & Free').length).toBe(3)
     })
 
-    it('displays user-created lane names', () => {
+    it('displays user-created lane names in all columns', () => {
       render(<ReadingBoard books={[bookInLane]} userLanes={[mockUserLane]} />)
 
-      expect(screen.getByText('Fiction')).toBeInTheDocument()
+      // Lane appears in all 3 status columns
+      expect(screen.getAllByText('Fiction').length).toBe(3)
     })
 
     it('groups books by lane within status', () => {
@@ -174,36 +186,39 @@ describe('ReadingBoard', () => {
         />
       )
 
-      expect(screen.getByText('📚 Wild & Free')).toBeInTheDocument()
-      expect(screen.getByText('Fiction')).toBeInTheDocument()
+      // Lanes appear in all 3 status columns
+      expect(screen.getAllByText('📚 Wild & Free').length).toBe(3)
+      expect(screen.getAllByText('Fiction').length).toBe(3)
       // BookCard renders both mobile and desktop layouts
       expect(screen.getAllByText('To Read Book').length).toBeGreaterThan(0)
       expect(screen.getAllByText('To Read In Lane').length).toBeGreaterThan(0)
     })
 
-    it('does not render empty lanes', () => {
-      // Book is in "to-read", lane has no books in "reading" status
+    it('renders empty lanes with drop placeholder', () => {
+      // Lane has no books but should still be visible
       const emptyLane: UserLane = { ...mockUserLane, id: 99, name: 'Empty Lane' }
 
       render(<ReadingBoard books={[toReadBook]} userLanes={[emptyLane]} />)
 
-      // Empty Lane should not appear since no books are in it
-      expect(screen.queryByText('Empty Lane')).not.toBeInTheDocument()
+      // Empty Lane should appear with "Drop books here" placeholder
+      // It appears 3 times - once in each status column (To Read, In Progress, Completed)
+      expect(screen.getAllByText('Empty Lane').length).toBe(3)
+      expect(screen.getAllByText('Drop books here').length).toBeGreaterThan(0)
     })
   })
 
   describe('Drag and drop', () => {
-    it('calls updateBookStatusMutation when dropping on status column', async () => {
+    it('calls updateBookStatusMutation when dropping on different status lane', async () => {
       const { apiRequest } = require('../../lib/queryClient')
       apiRequest.mockResolvedValue({ ok: true })
 
       render(<ReadingBoard books={[toReadBook]} userLanes={[]} />)
 
-      // Simulate drag end
+      // Simulate drag end - format is lane-{laneId}-{status}
       const onDragEnd = (global as unknown as { __onDragEnd: (result: unknown) => void }).__onDragEnd
       onDragEnd({
         draggableId: '1',
-        destination: { droppableId: 'status-reading' },
+        destination: { droppableId: 'lane-default-reading' },
       })
 
       await waitFor(() => {
@@ -217,11 +232,11 @@ describe('ReadingBoard', () => {
 
       render(<ReadingBoard books={[toReadBook]} userLanes={[mockUserLane]} />)
 
-      // Simulate drag end to a lane
+      // Simulate drag end to a specific lane - format is lane-{laneId}-{status}
       const onDragEnd = (global as unknown as { __onDragEnd: (result: unknown) => void }).__onDragEnd
       onDragEnd({
         draggableId: '1',
-        destination: { droppableId: 'lane-10' },
+        destination: { droppableId: 'lane-10-to-read' },
       })
 
       await waitFor(() => {
@@ -253,7 +268,7 @@ describe('ReadingBoard', () => {
       const onDragEnd = (global as unknown as { __onDragEnd: (result: unknown) => void }).__onDragEnd
       onDragEnd({
         draggableId: '1',
-        destination: { droppableId: 'status-completed' },
+        destination: { droppableId: 'lane-default-completed' },
       })
 
       await waitFor(() => {
@@ -345,7 +360,7 @@ describe('ReadingBoard', () => {
       })
     })
 
-    it('invalidates lanes query after creation', async () => {
+    it('refetches lanes query after creation', async () => {
       const { apiRequest } = require('../../lib/queryClient')
       apiRequest.mockResolvedValue({ ok: true })
 
@@ -365,7 +380,7 @@ describe('ReadingBoard', () => {
       fireEvent.click(submitButton!)
 
       await waitFor(() => {
-        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['/api/lanes'] })
+        expect(mockRefetchQueries).toHaveBeenCalledWith({ queryKey: ['/api/lanes'] })
       })
     })
   })
