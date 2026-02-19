@@ -82,9 +82,9 @@ export default function HomePage() {
           <div className="max-w-7xl mx-auto space-y-8">
             <Skeleton className="h-12 w-64" />
             <Skeleton className="h-4 w-96" />
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32" />
+                <Skeleton key={i} className="h-24 sm:h-32" />
               ))}
             </div>
           </div>
@@ -106,8 +106,8 @@ export default function HomePage() {
                   <BookMarked className="h-16 w-16 text-primary" />
                 </div>
               </div>
-              <h1 className="text-4xl font-bold tracking-tight">Welcome to Reading Roadmap</h1>
-              <p className="text-xl text-muted-foreground">
+              <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Welcome to Reading Roadmap</h1>
+              <p className="text-base sm:text-xl text-muted-foreground">
                 Organize your reading journey, track your progress, and discover new books
               </p>
             </div>
@@ -215,48 +215,48 @@ export default function HomePage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card className="bg-blue-50 dark:bg-blue-950/30">
-          <CardContent className="p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Total Books</h3>
-              <Library className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <CardContent className="p-3 sm:p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <h3 className="text-sm sm:text-lg font-medium">Total Books</h3>
+              <Library className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <p className="text-3xl font-bold">{totalBooks}</p>
-            <p className="text-sm text-muted-foreground mt-2">Books in your library</p>
+            <p className="text-2xl sm:text-3xl font-bold">{totalBooks}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">In your library</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-amber-50 dark:bg-amber-950/30">
-          <CardContent className="p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">To Read</h3>
-              <ListTodo className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+          <CardContent className="p-3 sm:p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <h3 className="text-sm sm:text-lg font-medium">To Read</h3>
+              <ListTodo className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <p className="text-3xl font-bold">{toReadCount}</p>
-            <p className="text-sm text-muted-foreground mt-2">Books to read</p>
+            <p className="text-2xl sm:text-3xl font-bold">{toReadCount}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">Books to read</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-green-50 dark:bg-green-950/30">
-          <CardContent className="p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">In Progress</h3>
-              <BookOpen className="h-5 w-5 text-green-600 dark:text-green-400" />
+          <CardContent className="p-3 sm:p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <h3 className="text-sm sm:text-lg font-medium">In Progress</h3>
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
             </div>
-            <p className="text-3xl font-bold">{inProgressCount}</p>
-            <p className="text-sm text-muted-foreground mt-2">Currently reading</p>
+            <p className="text-2xl sm:text-3xl font-bold">{inProgressCount}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">Currently reading</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-purple-50 dark:bg-purple-950/30">
-          <CardContent className="p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium">Completed</h3>
-              <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <CardContent className="p-3 sm:p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-2 sm:mb-4">
+              <h3 className="text-sm sm:text-lg font-medium">Completed</h3>
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
             </div>
-            <p className="text-3xl font-bold">{completedCount}</p>
-            <p className="text-sm text-muted-foreground mt-2">Books finished</p>
+            <p className="text-2xl sm:text-3xl font-bold">{completedCount}</p>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">Books finished</p>
           </CardContent>
         </Card>
       </div>
@@ -288,10 +288,10 @@ export default function HomePage() {
           </div>
         ) : (
           <Card>
-            <CardContent className="p-8 text-center">
-              <BookIcon className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No books yet</h3>
-              <p className="text-muted-foreground mb-4">
+            <CardContent className="p-6 sm:p-8 text-center">
+              <BookIcon className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 text-muted-foreground" />
+              <h3 className="text-base sm:text-lg font-semibold mb-2">No books yet</h3>
+              <p className="text-sm sm:text-base text-muted-foreground mb-4">
                 Start building your reading roadmap by adding your first book
               </p>
               <BookSearch />
@@ -329,9 +329,9 @@ export default function HomePage() {
       <NavHeader />
       <main className="flex-1 p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-8">
-          <header className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight">Reading Roadmap</h1>
-            <p className="text-muted-foreground">
+          <header className="space-y-1 sm:space-y-2">
+            <h1 className="text-2xl sm:text-4xl font-bold tracking-tight">Reading Roadmap</h1>
+            <p className="text-sm sm:text-base text-muted-foreground">
               Welcome back{user?.email ? `, ${user.email.split('@')[0]}` : ''}! Here&apos;s your reading journey
             </p>
           </header>
@@ -354,11 +354,9 @@ export default function HomePage() {
           {activeTab === "dashboard" ? (
             renderDashboard()
           ) : (
-            <Card>
-              <CardContent className="p-6">
-                <ReadingBoard books={books || []} userLanes={userLanes || []} />
-              </CardContent>
-            </Card>
+            <div className="sm:rounded-lg sm:border sm:bg-card sm:p-6">
+              <ReadingBoard books={books || []} userLanes={userLanes || []} />
+            </div>
           )}
         </div>
       </main>

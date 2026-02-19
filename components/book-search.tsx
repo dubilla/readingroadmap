@@ -187,7 +187,7 @@ export function BookSearch() {
           Add Book
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl sm:w-[95vw]">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Search Books</DialogTitle>
         </DialogHeader>
