@@ -206,7 +206,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     <div className="space-y-6">
       {/* Create User Lane */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Reading Board</h2>
+        <h2 className="text-xl sm:text-2xl font-bold">Reading Board</h2>
         <Dialog open={createLaneOpen} onOpenChange={setCreateLaneOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm" className="cursor-pointer">
@@ -242,14 +242,14 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="flex gap-4 overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:pb-0">
           {/* To Read Column */}
-          <div className="space-y-4">
+          <div className="min-w-[280px] flex-shrink-0 snap-start space-y-3 sm:space-y-4 md:min-w-0 md:flex-shrink">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">To Read</h3>
+              <h3 className="text-base sm:text-lg font-semibold">To Read</h3>
               <BookSearch />
             </div>
-            <div className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg">
+            <div className="space-y-3 sm:space-y-4 min-h-[200px] p-3 sm:p-4 bg-muted/20 rounded-lg">
               {Array.from(toReadByLane.entries()).map(([laneId]) =>
                 renderLaneSection(laneId, "to-read", toReadBooks)
               )}
@@ -257,9 +257,9 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
           </div>
 
           {/* In Progress Column */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">In Progress</h3>
-            <div className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg">
+          <div className="min-w-[280px] flex-shrink-0 snap-start space-y-3 sm:space-y-4 md:min-w-0 md:flex-shrink">
+            <h3 className="text-base sm:text-lg font-semibold">In Progress</h3>
+            <div className="space-y-3 sm:space-y-4 min-h-[200px] p-3 sm:p-4 bg-muted/20 rounded-lg">
               {Array.from(inProgressByLane.entries()).map(([laneId]) =>
                 renderLaneSection(laneId, "reading", inProgressBooks)
               )}
@@ -267,9 +267,9 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
           </div>
 
           {/* Completed Column */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Completed</h3>
-            <div className="space-y-4 min-h-[200px] p-4 bg-muted/20 rounded-lg">
+          <div className="min-w-[280px] flex-shrink-0 snap-start space-y-3 sm:space-y-4 md:min-w-0 md:flex-shrink">
+            <h3 className="text-base sm:text-lg font-semibold">Completed</h3>
+            <div className="space-y-3 sm:space-y-4 min-h-[200px] p-3 sm:p-4 bg-muted/20 rounded-lg">
               {Array.from(completedByLane.entries()).map(([laneId]) =>
                 renderLaneSection(laneId, "completed", completedBooks)
               )}
