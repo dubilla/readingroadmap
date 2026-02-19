@@ -1,17 +1,19 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { ReadingBoard } from "../components/reading-board"
 import { Card, CardContent } from "../components/ui/card"
 import { Skeleton } from "../components/ui/skeleton"
 import { Button } from "../components/ui/button"
 import { BookSearch } from "../components/book-search"
+import { BookActionDrawer } from "../components/book-action-drawer"
 import { NavHeader } from "../components/nav-header"
 import { GoalCard } from "../components/goal-card"
 import { GoalForm } from "../components/goal-form"
 import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, ArrowRight, BookMarked, Plus, Target } from "lucide-react"
 import type { Book, UserLane, ReadingGoal } from "../shared/schema"
+import { apiRequest } from "../lib/queryClient"
 import { useRouter } from "next/navigation"
 
 export default function HomePage() {
@@ -59,7 +61,41 @@ export default function HomePage() {
   const [activeTab, setActiveTab] = useState("dashboard")
   const [goalFormOpen, setGoalFormOpen] = useState(false)
   const [editingGoal, setEditingGoal] = useState<ReadingGoal | null>(null)
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const queryClient = useQueryClient()
   const isLoading = isAuthenticated === null || (isAuthenticated && (booksLoading || lanesLoading || goalsLoading))
+
+  const updateBookStatusMutation = useMutation({
+    mutationFn: async ({ bookId, status }: { bookId: number; status: string }) => {
+      await apiRequest("PATCH", `/api/books/${bookId}/status`, { status });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/books"] });
+    }
+  });
+
+  const updateBookLaneMutation = useMutation({
+    mutationFn: async ({ bookId, laneId }: { bookId: number; laneId: number | null }) => {
+      await apiRequest("PATCH", `/api/books/${bookId}/lane`, { laneId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/books"] });
+    }
+  });
+
+  const handleBookTap = (book: Book) => {
+    setSelectedBook(book);
+    setDrawerOpen(true);
+  };
+
+  const handleStatusChange = (bookId: number, status: string) => {
+    updateBookStatusMutation.mutate({ bookId, status });
+  };
+
+  const handleLaneChange = (bookId: number, laneId: number | null) => {
+    updateBookLaneMutation.mutate({ bookId, laneId });
+  };
 
   const handleEditGoal = (goal: ReadingGoal) => {
     setEditingGoal(goal)
@@ -271,7 +307,11 @@ export default function HomePage() {
         {books && books.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {books.slice(-4).reverse().map(book => (
-              <Card key={book.id} className="overflow-hidden">
+              <Card
+                key={book.id}
+                className="overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
+                onClick={() => handleBookTap(book)}
+              >
                 <div className="aspect-[3/4] relative">
                   <img
                     src={book.coverUrl}
@@ -365,6 +405,15 @@ export default function HomePage() {
         open={goalFormOpen}
         onOpenChange={handleGoalFormClose}
         editingGoal={editingGoal}
+      />
+
+      <BookActionDrawer
+        book={selectedBook}
+        userLanes={userLanes || []}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onStatusChange={handleStatusChange}
+        onLaneChange={handleLaneChange}
       />
     </div>
   )
