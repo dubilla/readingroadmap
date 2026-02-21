@@ -197,7 +197,7 @@ export function BookSearch() {
         <ResponsiveModalHeader className="flex-shrink-0">
           <ResponsiveModalTitle>Search Books</ResponsiveModalTitle>
         </ResponsiveModalHeader>
-        <div className="flex flex-col flex-1 min-h-0 gap-4">
+        <div className="flex flex-col flex-1 min-h-0 gap-4 px-4 sm:px-0 pb-4 sm:pb-0">
           <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
