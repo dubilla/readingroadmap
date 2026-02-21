@@ -322,7 +322,7 @@ export default function HomePage() {
         
         {books && books.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {books.slice(-4).reverse().map(book => (
+            {books.slice(0, 4).map(book => (
               <Card
                 key={book.id}
                 className="overflow-hidden cursor-pointer active:scale-[0.98] transition-transform"
