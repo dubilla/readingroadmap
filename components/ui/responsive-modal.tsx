@@ -109,11 +109,78 @@ const ResponsiveModalContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogContent>
 >(({ className, children, ...props }, ref) => {
   const { isMobile } = useResponsiveModal()
+  const scrollRef = React.useRef<HTMLDivElement>(null)
+
+  // Fix 1: Prevent iOS Safari from scrolling the *page* when the keyboard
+  // opens. On iOS, position:fixed elements move with page scroll when the
+  // keyboard is up, which shoots the drawer off the top of the viewport.
+  React.useEffect(() => {
+    if (!isMobile) return
+
+    const vv = window.visualViewport
+    if (!vv) return
+
+    function resetPageScroll() {
+      if (window.scrollY !== 0) {
+        window.scrollTo(0, 0)
+      }
+    }
+
+    vv.addEventListener("resize", resetPageScroll)
+    vv.addEventListener("scroll", resetPageScroll)
+
+    return () => {
+      vv.removeEventListener("resize", resetPageScroll)
+      vv.removeEventListener("scroll", resetPageScroll)
+    }
+  }, [isMobile])
+
+  // Fix 2: When an input inside the drawer receives focus, scroll it into
+  // view *within the drawer's own scroll container* rather than letting
+  // the browser scroll the page.
+  React.useEffect(() => {
+    if (!isMobile) return
+    const scrollEl = scrollRef.current
+    if (!scrollEl) return
+
+    function handleFocusIn(e: FocusEvent) {
+      const target = e.target as HTMLElement
+      if (!target.matches("input, textarea, select, [contenteditable]")) return
+
+      // Wait for the keyboard open animation to settle so getBoundingClientRect
+      // reflects the final position.
+      setTimeout(() => {
+        window.scrollTo(0, 0)
+
+        const targetRect = target.getBoundingClientRect()
+        const containerRect = scrollEl!.getBoundingClientRect()
+
+        if (targetRect.top < containerRect.top) {
+          scrollEl!.scrollTop -= containerRect.top - targetRect.top + 16
+        } else if (targetRect.bottom > containerRect.bottom) {
+          scrollEl!.scrollTop += targetRect.bottom - containerRect.bottom + 16
+        }
+      }, 300)
+    }
+
+    scrollEl.addEventListener("focusin", handleFocusIn)
+    return () => scrollEl.removeEventListener("focusin", handleFocusIn)
+  }, [isMobile])
 
   if (isMobile) {
     return (
-      <DrawerContent ref={ref} className={cn(className)}>
-        <div className="overflow-y-auto max-h-[calc(var(--visual-viewport-height,85dvh)-4rem)]">
+      // Fix 3: Push the drawer up above the keyboard via --keyboard-offset.
+      // The inline style overrides Tailwind's `bottom-0` on DrawerContent.
+      // vaul uses `transform` for its drag gesture, so changing `bottom` is safe.
+      <DrawerContent
+        ref={ref}
+        className={cn(className)}
+        style={{ bottom: "var(--keyboard-offset, 0px)", transition: "bottom 100ms ease-out" }}
+      >
+        <div
+          ref={scrollRef}
+          className="overflow-y-auto max-h-[calc(var(--visual-viewport-height,85dvh)-4rem)]"
+        >
           {children}
         </div>
       </DrawerContent>
