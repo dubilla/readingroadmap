@@ -187,12 +187,12 @@ export function BookSearch() {
           Add Book
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl flex flex-col overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle>Search Books</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="relative">
+        <div className="flex flex-col flex-1 min-h-0 gap-4">
+          <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search by title or author..."
@@ -201,7 +201,7 @@ export function BookSearch() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <div className="space-y-3 max-h-[50vh] sm:max-h-[400px] overflow-y-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="space-y-3 flex-1 min-h-0 overflow-y-auto -mx-4 px-4 sm:mx-0 sm:px-0">
             {isSearching ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
