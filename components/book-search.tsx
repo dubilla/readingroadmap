@@ -187,7 +187,7 @@ export function BookSearch() {
           Add Book
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Search Books</DialogTitle>
         </DialogHeader>
