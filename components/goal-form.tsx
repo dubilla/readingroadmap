@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalDescription,
+} from "@/components/ui/responsive-modal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -106,18 +112,18 @@ export function GoalForm({ open, onOpenChange, editingGoal }: GoalFormProps) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{editingGoal ? 'Edit Reading Goal' : 'Set a Reading Goal'}</DialogTitle>
-          <DialogDescription>
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent>
+        <ResponsiveModalHeader>
+          <ResponsiveModalTitle>{editingGoal ? 'Edit Reading Goal' : 'Set a Reading Goal'}</ResponsiveModalTitle>
+          <ResponsiveModalDescription>
             {editingGoal
               ? 'Update your reading goal for the year.'
               : 'Create a new reading goal to track your progress.'}
-          </DialogDescription>
-        </DialogHeader>
+          </ResponsiveModalDescription>
+        </ResponsiveModalHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 px-4 sm:px-0 pb-4 sm:pb-0">
           <div className="space-y-2">
             <Label htmlFor="goalType">Goal Type</Label>
             <Select value={goalType} onValueChange={(value: GoalType) => setGoalType(value)}>
@@ -182,7 +188,7 @@ export function GoalForm({ open, onOpenChange, editingGoal }: GoalFormProps) {
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

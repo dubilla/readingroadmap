@@ -6,7 +6,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalTrigger,
+} from "@/components/ui/responsive-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
@@ -180,17 +186,17 @@ export function BookSearch() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
+    <ResponsiveModal open={open} onOpenChange={setOpen}>
+      <ResponsiveModalTrigger asChild>
         <Button variant="outline" size="sm">
           <Plus className="h-4 w-4 mr-2" />
           Add Book
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-2xl flex flex-col overflow-hidden" onOpenAutoFocus={(e) => e.preventDefault()}>
-        <DialogHeader className="flex-shrink-0">
-          <DialogTitle>Search Books</DialogTitle>
-        </DialogHeader>
+      </ResponsiveModalTrigger>
+      <ResponsiveModalContent className="sm:max-w-2xl">
+        <ResponsiveModalHeader className="flex-shrink-0">
+          <ResponsiveModalTitle>Search Books</ResponsiveModalTitle>
+        </ResponsiveModalHeader>
         <div className="flex flex-col flex-1 min-h-0 gap-4">
           <div className="relative flex-shrink-0">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -256,7 +262,7 @@ export function BookSearch() {
             )}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </ResponsiveModalContent>
+    </ResponsiveModal>
   );
 }

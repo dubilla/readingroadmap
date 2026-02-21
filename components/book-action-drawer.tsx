@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalDescription,
+} from "@/components/ui/responsive-modal";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -75,14 +75,14 @@ export function BookActionDrawer({
   };
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent>
-        <DrawerHeader className="text-left">
-          <DrawerTitle className="line-clamp-1">{book.title}</DrawerTitle>
-          <DrawerDescription className="line-clamp-1">
+    <ResponsiveModal open={open} onOpenChange={onOpenChange}>
+      <ResponsiveModalContent>
+        <ResponsiveModalHeader className="text-left">
+          <ResponsiveModalTitle className="line-clamp-1">{book.title}</ResponsiveModalTitle>
+          <ResponsiveModalDescription className="line-clamp-1">
             {book.author}
-          </DrawerDescription>
-        </DrawerHeader>
+          </ResponsiveModalDescription>
+        </ResponsiveModalHeader>
 
         <div className="p-4 space-y-4">
           {/* Status Section */}
@@ -122,7 +122,7 @@ export function BookActionDrawer({
               >
                 <div className="flex items-center gap-2">
                   <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                  <span>📚 Wild & Free</span>
+                  <span>Wild & Free</span>
                 </div>
                 {book.laneId === null && (
                   <Check className="h-4 w-4 text-primary" />
@@ -181,7 +181,7 @@ export function BookActionDrawer({
             </>
           )}
         </div>
-      </DrawerContent>
+      </ResponsiveModalContent>
 
       <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
         <AlertDialogContent>
@@ -202,6 +202,6 @@ export function BookActionDrawer({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Drawer>
+    </ResponsiveModal>
   );
 }

@@ -4,7 +4,13 @@ import { BookCard } from "./book-card";
 import { BookActionDrawer } from "./book-action-drawer";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  ResponsiveModal,
+  ResponsiveModalContent,
+  ResponsiveModalHeader,
+  ResponsiveModalTitle,
+  ResponsiveModalTrigger,
+} from "@/components/ui/responsive-modal";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
@@ -221,19 +227,19 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
       {/* Create User Lane */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl sm:text-2xl font-bold">Reading Board</h2>
-        <Dialog open={createLaneOpen} onOpenChange={setCreateLaneOpen}>
-          <DialogTrigger asChild>
+        <ResponsiveModal open={createLaneOpen} onOpenChange={setCreateLaneOpen}>
+          <ResponsiveModalTrigger asChild>
             <Button variant="outline" size="sm" className="cursor-pointer">
               <Plus className="h-4 w-4 mr-2" />
               Create Lane
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Lane</DialogTitle>
-            </DialogHeader>
+          </ResponsiveModalTrigger>
+          <ResponsiveModalContent>
+            <ResponsiveModalHeader>
+              <ResponsiveModalTitle>Create New Lane</ResponsiveModalTitle>
+            </ResponsiveModalHeader>
             <Form {...createUserLaneForm}>
-              <form onSubmit={createUserLaneForm.handleSubmit(handleCreateLane)} className="space-y-4">
+              <form onSubmit={createUserLaneForm.handleSubmit(handleCreateLane)} className="space-y-4 px-4 sm:px-0 pb-4 sm:pb-0">
                 <FormField
                   control={createUserLaneForm.control}
                   name="name"
@@ -251,8 +257,8 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
                 </Button>
               </form>
             </Form>
-          </DialogContent>
-        </Dialog>
+          </ResponsiveModalContent>
+        </ResponsiveModal>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
