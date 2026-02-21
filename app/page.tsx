@@ -12,6 +12,7 @@ import { NavHeader } from "../components/nav-header"
 import { GoalCard } from "../components/goal-card"
 import { GoalForm } from "../components/goal-form"
 import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, ArrowRight, BookMarked, Plus, Target } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 import type { Book, UserLane, ReadingGoal } from "../shared/schema"
 import { apiRequest } from "../lib/queryClient"
 import { useRouter } from "next/navigation"
@@ -64,6 +65,7 @@ export default function HomePage() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { toast } = useToast()
   const isLoading = isAuthenticated === null || (isAuthenticated && (booksLoading || lanesLoading || goalsLoading))
 
   const updateBookStatusMutation = useMutation({
@@ -84,6 +86,16 @@ export default function HomePage() {
     }
   });
 
+  const deleteBookMutation = useMutation({
+    mutationFn: async (bookId: number) => {
+      await apiRequest("DELETE", `/api/books/${bookId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/books"] });
+      toast({ title: "Book removed" });
+    }
+  });
+
   const handleBookTap = (book: Book) => {
     setSelectedBook(book);
     setDrawerOpen(true);
@@ -95,6 +107,10 @@ export default function HomePage() {
 
   const handleLaneChange = (bookId: number, laneId: number | null) => {
     updateBookLaneMutation.mutate({ bookId, laneId });
+  };
+
+  const handleDelete = (bookId: number) => {
+    deleteBookMutation.mutate(bookId);
   };
 
   const handleEditGoal = (goal: ReadingGoal) => {
@@ -414,6 +430,7 @@ export default function HomePage() {
         onOpenChange={setDrawerOpen}
         onStatusChange={handleStatusChange}
         onLaneChange={handleLaneChange}
+        onDelete={handleDelete}
       />
     </div>
   )

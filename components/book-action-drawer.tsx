@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from "react";
 import {
   Drawer,
   DrawerContent,
@@ -7,9 +8,19 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { BookOpen, CheckCircle2, ListTodo, FolderOpen, Check } from "lucide-react";
+import { BookOpen, CheckCircle2, ListTodo, FolderOpen, Check, Trash2 } from "lucide-react";
 import type { Book, UserLane } from "@shared/schema";
 
 interface BookActionDrawerProps {
@@ -19,6 +30,7 @@ interface BookActionDrawerProps {
   onOpenChange: (open: boolean) => void;
   onStatusChange: (bookId: number, status: string) => void;
   onLaneChange: (bookId: number, laneId: number | null) => void;
+  onDelete?: (bookId: number) => void;
 }
 
 const statusOptions = [
@@ -34,7 +46,10 @@ export function BookActionDrawer({
   onOpenChange,
   onStatusChange,
   onLaneChange,
+  onDelete,
 }: BookActionDrawerProps) {
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+
   if (!book) return null;
 
   const handleStatusChange = (status: string) => {
@@ -44,6 +59,12 @@ export function BookActionDrawer({
 
   const handleLaneChange = (laneId: number | null) => {
     onLaneChange(book.id, laneId);
+    onOpenChange(false);
+  };
+
+  const handleDelete = () => {
+    onDelete?.(book.id);
+    setConfirmDeleteOpen(false);
     onOpenChange(false);
   };
 
@@ -143,8 +164,44 @@ export function BookActionDrawer({
               Currently in: <span className="font-medium">{getLaneName(book.laneId)}</span>
             </p>
           </div>
+
+          {/* Delete Section */}
+          {onDelete && (
+            <>
+              <Separator />
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove Book
+              </Button>
+            </>
+          )}
         </div>
       </DrawerContent>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove book</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove &ldquo;{book.title}&rdquo; from your collection? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+              onClick={handleDelete}
+            >
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Drawer>
   );
 }

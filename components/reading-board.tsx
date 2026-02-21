@@ -48,6 +48,16 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     }
   });
 
+  const deleteBookMutation = useMutation({
+    mutationFn: async (bookId: number) => {
+      await apiRequest("DELETE", `/api/books/${bookId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/books"] });
+      toast({ title: "Book removed" });
+    }
+  });
+
   const createLaneSchema = z.object({
     name: z.string().min(1),
     order: z.number(),
@@ -202,6 +212,10 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     updateBookLaneMutation.mutate({ bookId, laneId });
   };
 
+  const handleDelete = (bookId: number) => {
+    deleteBookMutation.mutate(bookId);
+  };
+
   return (
     <div className="space-y-6">
       {/* Create User Lane */}
@@ -286,6 +300,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
         onOpenChange={setDrawerOpen}
         onStatusChange={handleStatusChange}
         onLaneChange={handleLaneChange}
+        onDelete={handleDelete}
       />
     </div>
   );
