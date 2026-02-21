@@ -40,11 +40,12 @@ jest.mock('../../components/goal-form', () => ({
 
 // Mock BookActionDrawer to capture props and allow interaction
 jest.mock('../../components/book-action-drawer', () => ({
-  BookActionDrawer: ({ book, open, onStatusChange, onLaneChange }: {
+  BookActionDrawer: ({ book, open, onStatusChange, onLaneChange, onDelete }: {
     book: Book | null;
     open: boolean;
     onStatusChange: (bookId: number, status: string) => void;
     onLaneChange: (bookId: number, laneId: number | null) => void;
+    onDelete?: (bookId: number) => void;
     userLanes: UserLane[];
     onOpenChange: (open: boolean) => void;
   }) => {
@@ -64,6 +65,14 @@ jest.mock('../../components/book-action-drawer', () => ({
         >
           Change Lane
         </button>
+        {onDelete && (
+          <button
+            data-testid="delete-btn"
+            onClick={() => onDelete(book.id)}
+          >
+            Delete Book
+          </button>
+        )}
       </div>
     ) : null
   },
@@ -321,6 +330,62 @@ describe('Recently Added - Edit Modal', () => {
       })
 
       fireEvent.click(screen.getByTestId('lane-change-btn'))
+
+      await waitFor(() => {
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['/api/books'] })
+      })
+    })
+  })
+
+  describe('Delete book', () => {
+    it('renders delete button in the drawer', async () => {
+      await renderAuthenticatedDashboard()
+
+      const bookTitle = screen.getByText('Fourth Book')
+      const card = bookTitle.closest('.cursor-pointer')
+      fireEvent.click(card!)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('delete-btn')).toBeInTheDocument()
+      })
+    })
+
+    it('calls API to delete book when delete button is clicked in drawer', async () => {
+      const { apiRequest } = require('../../lib/queryClient')
+      apiRequest.mockResolvedValue({ ok: true })
+
+      await renderAuthenticatedDashboard()
+
+      const bookTitle = screen.getByText('Fourth Book')
+      const card = bookTitle.closest('.cursor-pointer')
+      fireEvent.click(card!)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('book-action-drawer')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('delete-btn'))
+
+      await waitFor(() => {
+        expect(apiRequest).toHaveBeenCalledWith('DELETE', '/api/books/4')
+      })
+    })
+
+    it('invalidates books query after deleting', async () => {
+      const { apiRequest } = require('../../lib/queryClient')
+      apiRequest.mockResolvedValue({ ok: true })
+
+      await renderAuthenticatedDashboard()
+
+      const bookTitle = screen.getByText('Fourth Book')
+      const card = bookTitle.closest('.cursor-pointer')
+      fireEvent.click(card!)
+
+      await waitFor(() => {
+        expect(screen.getByTestId('book-action-drawer')).toBeInTheDocument()
+      })
+
+      fireEvent.click(screen.getByTestId('delete-btn'))
 
       await waitFor(() => {
         expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['/api/books'] })
