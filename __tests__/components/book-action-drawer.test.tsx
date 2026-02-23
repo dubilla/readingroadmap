@@ -28,6 +28,21 @@ jest.mock('vaul', () => {
   }
 })
 
+// Mock ResponsiveModal to render content directly (avoids Radix aria-hidden portal issues in tests)
+jest.mock('../../components/ui/responsive-modal', () => {
+  const React = require('react')
+  return {
+    ResponsiveModal: ({ children, open }: { children: React.ReactNode; open: boolean }) =>
+      open ? <div data-testid="responsive-modal">{children}</div> : null,
+    ResponsiveModalContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    ResponsiveModalHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    ResponsiveModalTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
+    ResponsiveModalDescription: ({ children }: { children: React.ReactNode }) => <p>{children}</p>,
+    ResponsiveModalTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    ResponsiveModalClose: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  }
+})
+
 // Mock the AlertDialog UI components directly
 jest.mock('../../components/ui/alert-dialog', () => {
   const React = require('react')
