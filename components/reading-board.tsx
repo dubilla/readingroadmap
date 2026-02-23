@@ -1,3 +1,5 @@
+'use client'
+
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookCard } from "./book-card";
