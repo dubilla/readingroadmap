@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { auth } from '@/auth'
+import { db } from '@/lib/db'
+import { books } from '@/lib/schema'
+import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { Book } from '../../../../../shared/schema'
 
 const updateStatusSchema = z.object({
-  status: z.enum(['to-read', 'reading', 'completed'])
+  status: z.enum(['to-read', 'reading', 'completed']),
 })
 
 export async function PATCH(
@@ -13,35 +16,11 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    
-    // Create Supabase server client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    // Get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
     const body = await request.json()
     const result = updateStatusSchema.safeParse(body)
@@ -52,53 +31,34 @@ export async function PATCH(
       )
     }
 
-    const { status } = result.data
+    const [book] = await db
+      .update(books)
+      .set({ status: result.data.status })
+      .where(and(eq(books.id, parseInt(id)), eq(books.userId, userId)))
+      .returning()
 
-    // Update the book status
-    const { data: book, error } = await supabase
-      .from('books')
-      .update({ status })
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .select()
-      .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Book not found' },
-          { status: 404 }
-        )
-      }
-      console.error('Error updating book status:', error)
-      return NextResponse.json(
-        { error: 'Failed to update book status' },
-        { status: 500 }
-      )
+    if (!book) {
+      return NextResponse.json({ error: 'Book not found' }, { status: 404 })
     }
 
-    // Transform book from snake_case to camelCase
     const transformedBook: Book = {
       id: book.id,
       title: book.title,
       author: book.author,
       pages: book.pages,
-      coverUrl: book.cover_url,
+      coverUrl: book.coverUrl,
       status: book.status,
-      userId: book.user_id,
-      laneId: book.lane_id,
-      readingProgress: book.reading_progress,
-      goodreadsId: book.goodreads_id,
-      estimatedMinutes: book.estimated_minutes,
-      addedAt: book.added_at,
+      userId: book.userId,
+      laneId: book.laneId,
+      readingProgress: book.readingProgress,
+      goodreadsId: book.goodreadsId ?? undefined,
+      estimatedMinutes: book.estimatedMinutes,
+      addedAt: book.addedAt,
     }
 
     return NextResponse.json(transformedBook)
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-} 
+}

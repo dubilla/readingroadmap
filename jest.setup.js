@@ -2,12 +2,31 @@ import '@testing-library/jest-dom'
 import { TextEncoder, TextDecoder } from 'util'
 
 // Mock environment variables for testing
-process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'
-process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key'
+process.env.AUTH_SECRET = 'test-secret-for-ci'
+process.env.DATABASE_URL = 'postgresql://test:test@localhost/test'
+process.env.NEXTAUTH_URL = 'http://localhost:3000'
 
 // Polyfill for TextEncoder/TextDecoder in test environment
 global.TextEncoder = TextEncoder
 global.TextDecoder = TextDecoder
+
+// Mock @/auth globally
+jest.mock('@/auth', () => ({
+  auth: jest.fn(),
+  signIn: jest.fn(),
+  signOut: jest.fn(),
+  handlers: { GET: jest.fn(), POST: jest.fn() },
+}))
+
+// Mock @/lib/db globally
+jest.mock('@/lib/db', () => ({
+  db: {
+    select: jest.fn(),
+    insert: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  },
+}))
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
@@ -84,7 +103,7 @@ beforeAll(() => {
     }
     originalError.call(console, ...args)
   }
-  
+
   console.warn = (...args) => {
     if (
       typeof args[0] === 'string' &&
@@ -100,4 +119,4 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError
   console.warn = originalWarn
-}) 
+})

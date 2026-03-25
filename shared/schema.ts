@@ -1,8 +1,3 @@
-// Supabase Database Schema
-// This project uses Supabase for database, authentication, and API.
-// For local development, use: supabase start && supabase db reset
-// For production, use Supabase Cloud.
-
 import { z } from "zod";
 
 // Reading speed constants

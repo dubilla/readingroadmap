@@ -1,80 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { auth } from '@/auth'
+import { db } from '@/lib/db'
+import { readingGoals } from '@/lib/schema'
+import { and, eq } from 'drizzle-orm'
 import { updateReadingGoalSchema } from '@/shared/schema'
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+    const userId = session.user.id
 
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
+    const [goal] = await db
+      .select()
+      .from(readingGoals)
+      .where(and(eq(readingGoals.id, parseInt(id)), eq(readingGoals.userId, userId)))
 
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    if (!goal) {
+      return NextResponse.json({ error: 'Goal not found' }, { status: 404 })
     }
 
-    const { data: goal, error } = await supabase
-      .from('reading_goals')
-      .select('*')
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .single()
-
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Goal not found' },
-          { status: 404 }
-        )
-      }
-      console.error('Error fetching goal:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch goal' },
-        { status: 500 }
-      )
-    }
-
-    // Transform snake_case to camelCase
-    const transformedGoal = {
+    return NextResponse.json({
       id: goal.id,
-      userId: goal.user_id,
-      goalType: goal.goal_type,
-      targetCount: goal.target_count,
+      userId: goal.userId,
+      goalType: goal.goalType,
+      targetCount: goal.targetCount,
       year: goal.year,
-      createdAt: goal.created_at,
-      updatedAt: goal.updated_at,
-    }
-
-    return NextResponse.json(transformedGoal)
+      createdAt: goal.createdAt,
+      updatedAt: goal.updatedAt,
+    })
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -84,33 +47,11 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
     const body = await request.json()
     const result = updateReadingGoalSchema.safeParse(body)
@@ -121,109 +62,56 @@ export async function PATCH(
       )
     }
 
-    const updateData: Record<string, unknown> = {}
-    if (result.data.goalType !== undefined) updateData.goal_type = result.data.goalType
-    if (result.data.targetCount !== undefined) updateData.target_count = result.data.targetCount
+    const updateData: Partial<typeof readingGoals.$inferInsert> = {}
+    if (result.data.goalType !== undefined) updateData.goalType = result.data.goalType
+    if (result.data.targetCount !== undefined) updateData.targetCount = result.data.targetCount
     if (result.data.year !== undefined) updateData.year = result.data.year
-    updateData.updated_at = new Date().toISOString()
+    updateData.updatedAt = new Date().toISOString()
 
-    const { data: goal, error } = await supabase
-      .from('reading_goals')
-      .update(updateData)
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-      .select()
-      .single()
+    const [goal] = await db
+      .update(readingGoals)
+      .set(updateData)
+      .where(and(eq(readingGoals.id, parseInt(id)), eq(readingGoals.userId, userId)))
+      .returning()
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        return NextResponse.json(
-          { error: 'Goal not found' },
-          { status: 404 }
-        )
-      }
-      console.error('Error updating goal:', error)
-      return NextResponse.json(
-        { error: 'Failed to update goal' },
-        { status: 500 }
-      )
+    if (!goal) {
+      return NextResponse.json({ error: 'Goal not found' }, { status: 404 })
     }
 
-    // Transform snake_case to camelCase
-    const transformedGoal = {
+    return NextResponse.json({
       id: goal.id,
-      userId: goal.user_id,
-      goalType: goal.goal_type,
-      targetCount: goal.target_count,
+      userId: goal.userId,
+      goalType: goal.goalType,
+      targetCount: goal.targetCount,
       year: goal.year,
-      createdAt: goal.created_at,
-      updatedAt: goal.updated_at,
-    }
-
-    return NextResponse.json(transformedGoal)
+      createdAt: goal.createdAt,
+      updatedAt: goal.updatedAt,
+    })
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
-    const { error } = await supabase
-      .from('reading_goals')
-      .delete()
-      .eq('id', id)
-      .eq('user_id', session.user.id)
-
-    if (error) {
-      console.error('Error deleting goal:', error)
-      return NextResponse.json(
-        { error: 'Failed to delete goal' },
-        { status: 500 }
-      )
-    }
+    await db
+      .delete(readingGoals)
+      .where(and(eq(readingGoals.id, parseInt(id)), eq(readingGoals.userId, userId)))
 
     return NextResponse.json({ message: 'Goal deleted successfully' })
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

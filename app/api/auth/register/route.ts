@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { signIn } from '@/auth'
+import { db } from '@/lib/db'
+import { users } from '@/lib/schema'
+import { eq } from 'drizzle-orm'
+import bcrypt from 'bcrypt'
 import { z } from 'zod'
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
-  name: z.string().min(1).optional()
+  name: z.string().min(1).optional(),
 })
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const result = registerSchema.safeParse(body)
-    
+
     if (!result.success) {
       return NextResponse.json(
         { error: 'Invalid registration data' },
@@ -22,82 +26,34 @@ export async function POST(request: NextRequest) {
 
     const { email, password, name } = result.data
 
-    // Create Supabase server client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
+    const [existing] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, email))
 
-    // Sign up with Supabase
-    const { data, error } = await supabase.auth.signUp({
+    if (existing) {
+      return NextResponse.json(
+        { error: 'Email already in use' },
+        { status: 409 }
+      )
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12)
+
+    await db.insert(users).values({
       email,
-      password,
-      options: {
-        data: {
-          name: name || email.split('@')[0]
-        },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'}/auth/callback`
-      }
+      name: name || email.split('@')[0],
+      passwordHash,
     })
 
-    if (error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      )
-    }
+    await signIn('credentials', { email, password, redirect: false })
 
-    // Check if email confirmation is required
-    if (data.user && !data.session) {
-      // Email confirmation required
-      return NextResponse.json({
-        success: true,
-        message: 'Please check your email to confirm your account',
-        requiresConfirmation: true,
-        user: {
-          id: data.user.id,
-          email: data.user.email,
-          name: data.user.user_metadata?.name || data.user.email
-        }
-      })
-    }
-
-    if (!data.session || !data.user) {
-      return NextResponse.json(
-        { error: 'Registration failed' },
-        { status: 400 }
-      )
-    }
-
-    // User is immediately signed in (email confirmation disabled in dev)
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        name: data.user.user_metadata?.name || data.user.email
-      }
-    })
-
-    // Supabase middleware will handle setting the session cookies
-    return response
-  } catch {
+    return NextResponse.json({ success: true }, { status: 201 })
+  } catch (error) {
+    console.error('Register error:', error)
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     )
   }
-} 
+}

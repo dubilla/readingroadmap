@@ -1,112 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { auth } from '@/auth'
+import { db } from '@/lib/db'
+import { readingGoals } from '@/lib/schema'
+import { and, desc, eq } from 'drizzle-orm'
 import { insertReadingGoalSchema } from '@/shared/schema'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
     const { searchParams } = new URL(request.url)
     const year = searchParams.get('year')
 
-    let query = supabase
-      .from('reading_goals')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('year', { ascending: false })
-
+    const conditions = [eq(readingGoals.userId, userId)]
     if (year) {
-      query = query.eq('year', parseInt(year))
+      conditions.push(eq(readingGoals.year, parseInt(year)))
     }
 
-    const { data: goals, error } = await query
+    const goals = await db
+      .select()
+      .from(readingGoals)
+      .where(and(...conditions))
+      .orderBy(desc(readingGoals.year))
 
-    if (error) {
-      // If table doesn't exist yet, return empty array instead of 500
-      if (error.code === '42P01' || error.message?.includes('does not exist')) {
-        return NextResponse.json([])
-      }
-      console.error('Error fetching goals:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch goals' },
-        { status: 500 }
-      )
-    }
-
-    // Transform snake_case to camelCase
     const transformedGoals = goals.map(goal => ({
       id: goal.id,
-      userId: goal.user_id,
-      goalType: goal.goal_type,
-      targetCount: goal.target_count,
+      userId: goal.userId,
+      goalType: goal.goalType,
+      targetCount: goal.targetCount,
       year: goal.year,
-      createdAt: goal.created_at,
-      updatedAt: goal.updated_at,
+      createdAt: goal.createdAt,
+      updatedAt: goal.updatedAt,
     }))
 
     return NextResponse.json(transformedGoals)
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
     const body = await request.json()
     const result = insertReadingGoalSchema.safeParse(body)
@@ -119,14 +63,16 @@ export async function POST(request: NextRequest) {
 
     const goalData = result.data
 
-    // Check if goal for this type and year already exists
-    const { data: existingGoal } = await supabase
-      .from('reading_goals')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .eq('goal_type', goalData.goalType)
-      .eq('year', goalData.year)
-      .single()
+    const [existingGoal] = await db
+      .select({ id: readingGoals.id })
+      .from(readingGoals)
+      .where(
+        and(
+          eq(readingGoals.userId, userId),
+          eq(readingGoals.goalType, goalData.goalType),
+          eq(readingGoals.year, goalData.year)
+        )
+      )
 
     if (existingGoal) {
       return NextResponse.json(
@@ -135,42 +81,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { data: goal, error } = await supabase
-      .from('reading_goals')
-      .insert({
-        user_id: session.user.id,
-        goal_type: goalData.goalType,
-        target_count: goalData.targetCount,
+    const [goal] = await db
+      .insert(readingGoals)
+      .values({
+        userId,
+        goalType: goalData.goalType,
+        targetCount: goalData.targetCount,
         year: goalData.year,
       })
-      .select()
-      .single()
+      .returning()
 
-    if (error) {
-      console.error('Error creating goal:', error)
-      return NextResponse.json(
-        { error: 'Failed to create goal' },
-        { status: 500 }
-      )
-    }
-
-    // Transform snake_case to camelCase
     const transformedGoal = {
       id: goal.id,
-      userId: goal.user_id,
-      goalType: goal.goal_type,
-      targetCount: goal.target_count,
+      userId: goal.userId,
+      goalType: goal.goalType,
+      targetCount: goal.targetCount,
       year: goal.year,
-      createdAt: goal.created_at,
-      updatedAt: goal.updated_at,
+      createdAt: goal.createdAt,
+      updatedAt: goal.updatedAt,
     }
 
     return NextResponse.json(transformedGoal, { status: 201 })
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
