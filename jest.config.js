@@ -13,7 +13,7 @@ const customJestConfig = {
     '^@/(.*)$': '<rootDir>/$1',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@supabase|@supabase/supabase-js|@supabase/ssr)/)',
+    'node_modules/(?!(next-auth|@auth)/)',
   ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',

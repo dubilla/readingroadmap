@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { auth } from '@/auth'
+import { db } from '@/lib/db'
+import { books } from '@/lib/schema'
+import { eq, desc } from 'drizzle-orm'
 import { z } from 'zod'
 import { READING_SPEEDS, AVG_WORDS_PER_PAGE, Book } from '../../../shared/schema'
 
@@ -9,110 +12,52 @@ const bookSchema = z.object({
   pages: z.number().min(1),
   coverUrl: z.string().url(),
   status: z.enum(['to-read', 'reading', 'completed']),
-  laneId: z.number().nullable().optional()
+  laneId: z.number().nullable().optional(),
 })
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Create Supabase server client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    // Get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
-    const { data: books, error } = await supabase
-      .from('books')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('added_at', { ascending: false })
+    const result = await db
+      .select()
+      .from(books)
+      .where(eq(books.userId, userId))
+      .orderBy(desc(books.addedAt))
 
-    if (error) {
-      console.error('Error fetching books:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch books' },
-        { status: 500 }
-      )
-    }
-
-    // Transform books from snake_case to camelCase
-    const transformedBooks: Book[] = books?.map(r => ({
+    const transformedBooks: Book[] = result.map(r => ({
       id: r.id,
       title: r.title,
       author: r.author,
       pages: r.pages,
-      coverUrl: r.cover_url,
+      coverUrl: r.coverUrl,
       status: r.status,
-      userId: r.user_id,
-      laneId: r.lane_id,
-      readingProgress: r.reading_progress,
-      goodreadsId: r.goodreads_id,
-      estimatedMinutes: r.estimated_minutes,
-      addedAt: r.added_at,
-    })) || []
+      userId: r.userId,
+      laneId: r.laneId,
+      readingProgress: r.readingProgress,
+      goodreadsId: r.goodreadsId ?? undefined,
+      estimatedMinutes: r.estimatedMinutes,
+      addedAt: r.addedAt,
+    }))
 
     return NextResponse.json(transformedBooks)
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Create Supabase server client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    // Get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
     const body = await request.json()
     const result = bookSchema.safeParse(body)
@@ -124,56 +69,42 @@ export async function POST(request: NextRequest) {
     }
 
     const bookData = result.data
-    
-    // Calculate estimated reading time (average speed)
-    const estimatedMinutes = Math.ceil((bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.average)
+    const estimatedMinutes = Math.ceil(
+      (bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.average
+    )
 
-    // Transform camelCase to snake_case for database
-    const { data: book, error } = await supabase
-      .from('books')
-      .insert({
+    const [book] = await db
+      .insert(books)
+      .values({
         title: bookData.title,
         author: bookData.author,
         pages: bookData.pages,
-        cover_url: bookData.coverUrl,
+        coverUrl: bookData.coverUrl,
         status: bookData.status,
-        user_id: session.user.id,
-        lane_id: bookData.laneId || null,
-        estimated_minutes: estimatedMinutes,
+        userId,
+        laneId: bookData.laneId || null,
+        estimatedMinutes,
       })
-      .select()
-      .single()
+      .returning()
 
-    if (error) {
-      console.error('Error creating book:', error)
-      return NextResponse.json(
-        { error: 'Failed to create book' },
-        { status: 500 }
-      )
-    }
-
-    // Transform the created book back to camelCase for frontend
     const transformedBook: Book = {
       id: book.id,
       title: book.title,
       author: book.author,
       pages: book.pages,
-      coverUrl: book.cover_url,
+      coverUrl: book.coverUrl,
       status: book.status,
-      userId: book.user_id,
-      laneId: book.lane_id,
-      readingProgress: book.reading_progress,
-      goodreadsId: book.goodreads_id,
-      estimatedMinutes: book.estimated_minutes,
-      addedAt: book.added_at,
+      userId: book.userId,
+      laneId: book.laneId,
+      readingProgress: book.readingProgress,
+      goodreadsId: book.goodreadsId ?? undefined,
+      estimatedMinutes: book.estimatedMinutes,
+      addedAt: book.addedAt,
     }
 
     return NextResponse.json(transformedBook, { status: 201 })
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-} 
+}

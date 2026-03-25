@@ -1,37 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { auth } from '@/auth'
+import { db } from '@/lib/db'
+import { books } from '@/lib/schema'
+import { and, eq, ilike, or } from 'drizzle-orm'
 import type { Book } from '../../../../shared/schema'
 
 export async function GET(request: NextRequest) {
   try {
-    // Create Supabase server client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    // Get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
     const { searchParams } = new URL(request.url)
     const query = searchParams.get('query')
@@ -43,31 +23,37 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { data: books, error } = await supabase
-      .from('books')
-      .select('*')
-      .eq('user_id', session.user.id)
-
-    if (error) {
-      console.error('Error fetching books:', error)
-      return NextResponse.json(
-        { error: 'Failed to search books' },
-        { status: 500 }
+    const result = await db
+      .select()
+      .from(books)
+      .where(
+        and(
+          eq(books.userId, userId),
+          or(
+            ilike(books.title, `%${query}%`),
+            ilike(books.author, `%${query}%`)
+          )
+        )
       )
-    }
 
-    // Filter books in memory
-    const filteredBooks = (books || []).filter((book: Book) => 
-      book.title.toLowerCase().includes(query.toLowerCase()) ||
-      book.author.toLowerCase().includes(query.toLowerCase())
-    )
+    const transformedBooks: Book[] = result.map(r => ({
+      id: r.id,
+      title: r.title,
+      author: r.author,
+      pages: r.pages,
+      coverUrl: r.coverUrl,
+      status: r.status,
+      userId: r.userId,
+      laneId: r.laneId,
+      readingProgress: r.readingProgress,
+      goodreadsId: r.goodreadsId ?? undefined,
+      estimatedMinutes: r.estimatedMinutes,
+      addedAt: r.addedAt,
+    }))
 
-    return NextResponse.json(filteredBooks)
+    return NextResponse.json(transformedBooks)
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-} 
+}

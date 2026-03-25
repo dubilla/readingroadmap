@@ -1,98 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { auth } from '@/auth'
+import { db } from '@/lib/db'
+import { swimlanes } from '@/lib/schema'
+import { eq, asc } from 'drizzle-orm'
 import { z } from 'zod'
 
 const swimlaneSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  order: z.number()
+  order: z.number(),
 })
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    // Create Supabase server client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    // Get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
-    const { data: swimlanes, error } = await supabase
-      .from('swimlanes')
-      .select('*')
-      .eq('user_id', session.user.id)
-      .order('order', { ascending: true })
+    const result = await db
+      .select()
+      .from(swimlanes)
+      .where(eq(swimlanes.userId, userId))
+      .orderBy(asc(swimlanes.order))
 
-    if (error) {
-      console.error('Error fetching swimlanes:', error)
-      return NextResponse.json(
-        { error: 'Failed to fetch swimlanes' },
-        { status: 500 }
-      )
-    }
-
-    return NextResponse.json(swimlanes)
+    return NextResponse.json(result)
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Create Supabase server client
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return request.cookies.get(name)?.value
-          },
-          set(_name: string, _value: string, _options: any) {
-            // This is handled by the middleware
-          },
-          remove(_name: string, _options: any) {
-            // This is handled by the middleware
-          },
-        },
-      }
-    )
-
-    // Get the current session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError || !session) {
-      return NextResponse.json(
-        { error: 'Not authenticated' },
-        { status: 401 }
-      )
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
+    const userId = session.user.id
 
     const body = await request.json()
     const result = swimlaneSchema.safeParse(body)
@@ -103,32 +49,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const swimlaneData = result.data
-    const { data: swimlane, error } = await supabase
-      .from('swimlanes')
-      .insert({
-        name: swimlaneData.name,
-        description: swimlaneData.description,
-        order: swimlaneData.order,
-        user_id: session.user.id
+    const [swimlane] = await db
+      .insert(swimlanes)
+      .values({
+        name: result.data.name,
+        description: result.data.description,
+        order: result.data.order,
+        userId,
       })
-      .select()
-      .single()
-
-    if (error) {
-      console.error('Error creating swimlane:', error)
-      return NextResponse.json(
-        { error: 'Failed to create swimlane' },
-        { status: 500 }
-      )
-    }
+      .returning()
 
     return NextResponse.json(swimlane, { status: 201 })
   } catch (error) {
     console.error('Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
-} 
+}
