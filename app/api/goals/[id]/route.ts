@@ -105,9 +105,14 @@ export async function DELETE(
     }
     const userId = session.user.id
 
-    await db
+    const [deleted] = await db
       .delete(readingGoals)
       .where(and(eq(readingGoals.id, parseInt(id)), eq(readingGoals.userId, userId)))
+      .returning()
+
+    if (!deleted) {
+      return NextResponse.json({ error: 'Goal not found' }, { status: 404 })
+    }
 
     return NextResponse.json({ message: 'Goal deleted successfully' })
   } catch (error) {

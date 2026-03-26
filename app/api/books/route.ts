@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { books } from '@/lib/schema'
-import { eq, desc } from 'drizzle-orm'
+import { books, userLanes } from '@/lib/schema'
+import { and, eq, desc } from 'drizzle-orm'
 import { z } from 'zod'
 import { READING_SPEEDS, AVG_WORDS_PER_PAGE, Book } from '../../../shared/schema'
 
@@ -69,6 +69,17 @@ export async function POST(request: NextRequest) {
     }
 
     const bookData = result.data
+
+    if (bookData.laneId) {
+      const [lane] = await db
+        .select()
+        .from(userLanes)
+        .where(and(eq(userLanes.id, bookData.laneId), eq(userLanes.userId, userId)))
+      if (!lane) {
+        return NextResponse.json({ error: 'Lane not found' }, { status: 404 })
+      }
+    }
+
     const estimatedMinutes = Math.ceil(
       (bookData.pages * AVG_WORDS_PER_PAGE) / READING_SPEEDS.average
     )

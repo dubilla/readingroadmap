@@ -2,25 +2,27 @@
  * One-time data migration: Supabase → Neon
  *
  * Reads your data from Supabase via its REST API (using the service role key,
- * which bypasses RLS) and inserts it into Neon using your new user ID.
+ * which bypasses RLS) and inserts it into Neon, reusing the same UUID so all
+ * foreign key relationships are preserved.
  *
  * Prerequisites:
- *   1. PR 2 is deployed and you've registered your account on the live site.
- *   2. You have the following values:
- *      - OLD_USER_ID:           Your Supabase user UUID
- *                               (Supabase dashboard → Authentication → Users)
- *      - NEW_USER_ID:           Your new Neon user UUID
- *                               (run: SELECT id FROM users WHERE email = 'you@example.com'
- *                                in Neon console, or npx drizzle-kit studio)
- *      - SUPABASE_URL:          e.g. https://xxxx.supabase.co
- *                               (Supabase dashboard → Settings → API)
- *      - SUPABASE_SERVICE_KEY:  The service_role key (not the anon key)
- *                               (Supabase dashboard → Settings → API)
- *      - DATABASE_URL:          Your Neon connection string
+ *   1. Run `npm run db:migrate` to push the schema to Neon.
+ *   2. Insert your user row into Neon first (Neon console SQL editor):
+ *        INSERT INTO users (id, email, name, password_hash)
+ *        VALUES ('<your-supabase-uuid>', 'you@example.com', 'Your Name', 'placeholder');
+ *      You can set a real password hash after cutover via the app's register flow,
+ *      or update it directly:
+ *        UPDATE users SET password_hash = '<bcrypt-hash>' WHERE id = '<uuid>';
+ *   3. Gather the following values:
+ *      - USER_ID:           Your Supabase user UUID (reused in Neon)
+ *                           (Supabase dashboard → Authentication → Users)
+ *      - SUPABASE_URL:      e.g. https://xxxx.supabase.co
+ *                           (Supabase dashboard → Settings → API)
+ *      - SUPABASE_SERVICE_KEY: The service_role key (not the anon key)
+ *      - DATABASE_URL:      Your Neon connection string
  *
  * Usage:
- *   OLD_USER_ID=... \
- *   NEW_USER_ID=... \
+ *   USER_ID=<your-uuid> \
  *   SUPABASE_URL=https://xxxx.supabase.co \
  *   SUPABASE_SERVICE_KEY=... \
  *   DATABASE_URL=... \
@@ -30,15 +32,14 @@
 import { neon } from '@neondatabase/serverless'
 
 const {
-  OLD_USER_ID,
-  NEW_USER_ID,
+  USER_ID,
   SUPABASE_URL,
   SUPABASE_SERVICE_KEY,
   DATABASE_URL,
 } = process.env
 
 function assertEnv() {
-  const missing = ['OLD_USER_ID', 'NEW_USER_ID', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'DATABASE_URL']
+  const missing = ['USER_ID', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'DATABASE_URL']
     .filter(k => !process.env[k])
   if (missing.length) {
     console.error('Missing required env vars:', missing.join(', '))
@@ -47,7 +48,7 @@ function assertEnv() {
 }
 
 async function fetchFromSupabase<T>(table: string): Promise<T[]> {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${OLD_USER_ID}&select=*`
+  const url = `${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${USER_ID}&select=*`
   const res = await fetch(url, {
     headers: {
       apikey: SUPABASE_SERVICE_KEY!,
@@ -71,7 +72,7 @@ async function main() {
   for (const lane of lanes) {
     await sql`
       INSERT INTO user_lanes (id, name, user_id, "order")
-      VALUES (${lane.id}, ${lane.name}, ${NEW_USER_ID}, ${lane.order})
+      VALUES (${lane.id}, ${lane.name}, ${USER_ID}, ${lane.order})
     `
   }
 
@@ -81,7 +82,7 @@ async function main() {
   for (const swim of swims) {
     await sql`
       INSERT INTO swimlanes (id, name, description, "order", user_id)
-      VALUES (${swim.id}, ${swim.name}, ${swim.description}, ${swim.order}, ${NEW_USER_ID})
+      VALUES (${swim.id}, ${swim.name}, ${swim.description}, ${swim.order}, ${USER_ID})
     `
   }
 
@@ -101,7 +102,7 @@ async function main() {
         ${book.pages},
         ${book.cover_url},
         ${book.status}::book_status,
-        ${NEW_USER_ID},
+        ${USER_ID},
         ${book.lane_id},
         ${book.reading_progress ?? 0},
         ${book.goodreads_id},
@@ -119,7 +120,7 @@ async function main() {
       INSERT INTO reading_goals (id, user_id, goal_type, target_count, year, created_at, updated_at)
       VALUES (
         ${goal.id},
-        ${NEW_USER_ID},
+        ${USER_ID},
         ${goal.goal_type}::goal_type,
         ${goal.target_count},
         ${goal.year},

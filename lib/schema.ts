@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, uuid, pgEnum } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, timestamp, uuid, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core'
 
 export const bookStatusEnum = pgEnum('book_status', ['to-read', 'reading', 'completed'])
 export const goalTypeEnum = pgEnum('goal_type', ['books', 'pages'])
@@ -49,4 +49,6 @@ export const readingGoals = pgTable('reading_goals', {
   year: integer('year').notNull(),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().notNull(),
-})
+}, (table) => [
+  uniqueIndex('reading_goals_user_goal_year_idx').on(table.userId, table.goalType, table.year),
+])
