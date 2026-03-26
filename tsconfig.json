@@ -6,6 +6,9 @@
     "hooks/**/*",
     "contexts/**/*",
     "api/**/*",
+    "shared/**/*",
+    "types/**/*",
+    "auth.ts",
     "middleware.ts",
     ".next/types/**/*.ts"
   ],

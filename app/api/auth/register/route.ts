@@ -46,7 +46,14 @@ export async function POST(request: NextRequest) {
       passwordHash,
     })
 
-    await signIn('credentials', { email, password, redirect: false })
+    // Account created — attempt auto sign-in. If it fails, the account still
+    // exists and the user can sign in manually from the login page.
+    try {
+      await signIn('credentials', { email, password, redirect: false })
+    } catch {
+      // Non-fatal: return success so the client can redirect to /auth
+      return NextResponse.json({ success: true, requiresLogin: true }, { status: 201 })
+    }
 
     return NextResponse.json({ success: true }, { status: 201 })
   } catch (error) {

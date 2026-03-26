@@ -1,28 +1,24 @@
 /**
  * One-time data migration: Supabase → Neon
  *
- * Reads your data from Supabase via its REST API (using the service role key,
- * which bypasses RLS) and inserts it into Neon, reusing the same UUID so all
- * foreign key relationships are preserved.
+ * Fetches your user profile and all data from Supabase via its REST/Admin API
+ * and inserts everything into Neon, reusing the same UUID so all foreign key
+ * relationships are preserved.
  *
  * Prerequisites:
  *   1. Run `npm run db:migrate` to push the schema to Neon.
- *   2. Insert your user row into Neon first (Neon console SQL editor):
- *        INSERT INTO users (id, email, name, password_hash)
- *        VALUES ('<your-supabase-uuid>', 'you@example.com', 'Your Name', 'placeholder');
- *      You can set a real password hash after cutover via the app's register flow,
- *      or update it directly:
- *        UPDATE users SET password_hash = '<bcrypt-hash>' WHERE id = '<uuid>';
- *   3. Gather the following values:
- *      - USER_ID:           Your Supabase user UUID (reused in Neon)
- *                           (Supabase dashboard → Authentication → Users)
- *      - SUPABASE_URL:      e.g. https://xxxx.supabase.co
- *                           (Supabase dashboard → Settings → API)
+ *   2. Gather the following values:
+ *      - USER_ID:              Your Supabase user UUID
+ *                              (Supabase dashboard → Authentication → Users)
+ *      - USER_PASSWORD:        Your current password (will be bcrypt-hashed)
+ *      - SUPABASE_URL:         e.g. https://xxxx.supabase.co
  *      - SUPABASE_SERVICE_KEY: The service_role key (not the anon key)
- *      - DATABASE_URL:      Your Neon connection string
+ *                              (Supabase dashboard → Settings → API)
+ *      - DATABASE_URL:         Your Neon connection string
  *
  * Usage:
  *   USER_ID=<your-uuid> \
+ *   USER_PASSWORD=<your-password> \
  *   SUPABASE_URL=https://xxxx.supabase.co \
  *   SUPABASE_SERVICE_KEY=... \
  *   DATABASE_URL=... \
@@ -30,21 +26,37 @@
  */
 
 import { neon } from '@neondatabase/serverless'
+import bcrypt from 'bcrypt'
 
 const {
   USER_ID,
+  USER_PASSWORD,
   SUPABASE_URL,
   SUPABASE_SERVICE_KEY,
   DATABASE_URL,
 } = process.env
 
 function assertEnv() {
-  const missing = ['USER_ID', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'DATABASE_URL']
+  const missing = ['USER_ID', 'USER_PASSWORD', 'SUPABASE_URL', 'SUPABASE_SERVICE_KEY', 'DATABASE_URL']
     .filter(k => !process.env[k])
   if (missing.length) {
     console.error('Missing required env vars:', missing.join(', '))
     process.exit(1)
   }
+}
+
+async function fetchSupabaseUser() {
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${USER_ID}`, {
+    headers: {
+      apikey: SUPABASE_SERVICE_KEY!,
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY!}`,
+    },
+  })
+  if (!res.ok) {
+    const body = await res.text()
+    throw new Error(`Failed to fetch user from Supabase (${res.status}): ${body}`)
+  }
+  return res.json()
 }
 
 async function fetchFromSupabase<T>(table: string): Promise<T[]> {
@@ -66,6 +78,22 @@ async function main() {
   assertEnv()
   const sql = neon(DATABASE_URL!)
 
+  // ── 0. user ─────────────────────────────────────────────────────────────────
+  console.log('Fetching user from Supabase...')
+  const supabaseUser = await fetchSupabaseUser()
+  const email = supabaseUser.email
+  const name = supabaseUser.user_metadata?.name
+    || supabaseUser.user_metadata?.full_name
+    || email.split('@')[0]
+  const passwordHash = await bcrypt.hash(USER_PASSWORD!, 12)
+
+  await sql`
+    INSERT INTO users (id, email, name, password_hash)
+    VALUES (${USER_ID}, ${email}, ${name}, ${passwordHash})
+    ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, password_hash = EXCLUDED.password_hash
+  `
+  console.log(`Migrated user: ${email} (${USER_ID})`)
+
   // ── 1. user_lanes ──────────────────────────────────────────────────────────
   const lanes = await fetchFromSupabase<any>('user_lanes')
   console.log(`Migrating ${lanes.length} lanes...`)
@@ -73,6 +101,7 @@ async function main() {
     await sql`
       INSERT INTO user_lanes (id, name, user_id, "order")
       VALUES (${lane.id}, ${lane.name}, ${USER_ID}, ${lane.order})
+      ON CONFLICT (id) DO NOTHING
     `
   }
 
@@ -83,6 +112,7 @@ async function main() {
     await sql`
       INSERT INTO swimlanes (id, name, description, "order", user_id)
       VALUES (${swim.id}, ${swim.name}, ${swim.description}, ${swim.order}, ${USER_ID})
+      ON CONFLICT (id) DO NOTHING
     `
   }
 
@@ -109,6 +139,7 @@ async function main() {
         ${book.estimated_minutes},
         ${book.added_at}
       )
+      ON CONFLICT (id) DO NOTHING
     `
   }
 
@@ -127,6 +158,7 @@ async function main() {
         ${goal.created_at},
         ${goal.updated_at}
       )
+      ON CONFLICT (id) DO NOTHING
     `
   }
 
@@ -139,7 +171,7 @@ async function main() {
 
   console.log()
   console.log('✓ Migration complete!')
-  console.log(`  ${lanes.length} lanes, ${swims.length} swimlanes, ${bookRows.length} books, ${goals.length} goals`)
+  console.log(`  1 user, ${lanes.length} lanes, ${swims.length} swimlanes, ${bookRows.length} books, ${goals.length} goals`)
 }
 
 main().catch(err => {
