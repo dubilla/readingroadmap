@@ -36,7 +36,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  hashedPassword: string;
+  passwordHash: string;
   createdAt: string;
 }
 
@@ -61,7 +61,7 @@ export interface ReadingGoalWithProgress extends ReadingGoal {
 export const insertUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
-  hashedPassword: z.string().min(1),
+  passwordHash: z.string().min(1),
 });
 
 export const insertUserLaneSchema = z.object({
