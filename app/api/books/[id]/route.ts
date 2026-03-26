@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { books } from '@/lib/schema'
+import { books, userLanes } from '@/lib/schema'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { Book } from '../../../../shared/schema'
@@ -86,8 +86,18 @@ export async function PUT(
     if (result.data.pages !== undefined) updateData.pages = result.data.pages
     if (result.data.coverUrl !== undefined) updateData.coverUrl = result.data.coverUrl
     if (result.data.status !== undefined) updateData.status = result.data.status
-    if (result.data.laneId !== undefined) updateData.laneId = result.data.laneId
     if (result.data.readingProgress !== undefined) updateData.readingProgress = result.data.readingProgress
+
+    if (result.data.laneId !== undefined) {
+      const [lane] = await db
+        .select()
+        .from(userLanes)
+        .where(and(eq(userLanes.id, result.data.laneId), eq(userLanes.userId, userId)))
+      if (!lane) {
+        return NextResponse.json({ error: 'Lane not found' }, { status: 404 })
+      }
+      updateData.laneId = result.data.laneId
+    }
 
     const [book] = await db
       .update(books)
@@ -133,9 +143,14 @@ export async function DELETE(
     }
     const userId = session.user.id
 
-    await db
+    const [deleted] = await db
       .delete(books)
       .where(and(eq(books.id, parseInt(id)), eq(books.userId, userId)))
+      .returning()
+
+    if (!deleted) {
+      return NextResponse.json({ error: 'Book not found' }, { status: 404 })
+    }
 
     return NextResponse.json({ message: 'Book deleted successfully' })
   } catch (error) {

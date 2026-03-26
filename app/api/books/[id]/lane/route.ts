@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { db } from '@/lib/db'
-import { books } from '@/lib/schema'
+import { books, userLanes } from '@/lib/schema'
 import { and, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { Book } from '../../../../../shared/schema'
@@ -29,6 +29,16 @@ export async function PATCH(
         { error: result.error.errors[0]?.message || 'Invalid lane data' },
         { status: 400 }
       )
+    }
+
+    if (result.data.laneId !== null) {
+      const [lane] = await db
+        .select()
+        .from(userLanes)
+        .where(and(eq(userLanes.id, result.data.laneId!), eq(userLanes.userId, userId)))
+      if (!lane) {
+        return NextResponse.json({ error: 'Lane not found' }, { status: 404 })
+      }
     }
 
     const [book] = await db

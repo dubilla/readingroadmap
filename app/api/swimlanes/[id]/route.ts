@@ -89,9 +89,14 @@ export async function DELETE(
     }
     const userId = session.user.id
 
-    await db
+    const [deleted] = await db
       .delete(swimlanes)
       .where(and(eq(swimlanes.id, parseInt(id)), eq(swimlanes.userId, userId)))
+      .returning()
+
+    if (!deleted) {
+      return NextResponse.json({ error: 'Swimlane not found' }, { status: 404 })
+    }
 
     return NextResponse.json({ message: 'Swimlane deleted successfully' })
   } catch (error) {

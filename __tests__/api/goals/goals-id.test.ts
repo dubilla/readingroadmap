@@ -152,7 +152,9 @@ describe('/api/goals/[id]', () => {
     it('should delete a goal', async () => {
       mockAuth.mockResolvedValue(mockSession)
       mockDb.delete.mockReturnValue({
-        where: jest.fn().mockResolvedValue([]),
+        where: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([mockGoal]),
+        }),
       })
 
       const response = await DELETE(createMockRequest(), { params: createMockParams('1') })

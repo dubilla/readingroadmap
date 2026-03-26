@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "reading_goals_user_goal_year_idx" ON "reading_goals" USING btree ("user_id","goal_type","year");
