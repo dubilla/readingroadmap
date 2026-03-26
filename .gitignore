@@ -116,5 +116,6 @@ BACKLOG.md
 # Claude
 .claude/commands
 .claude/settings.local.json
+.claude/review-loop.local.md
 
 reviews
