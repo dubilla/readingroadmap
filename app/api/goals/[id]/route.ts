@@ -87,7 +87,13 @@ export async function PATCH(
       createdAt: goal.createdAt,
       updatedAt: goal.updatedAt,
     })
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      return NextResponse.json(
+        { error: 'A goal for this type and year already exists' },
+        { status: 409 }
+      )
+    }
     console.error('Error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
