@@ -53,6 +53,14 @@ describe('/api/auth/register', () => {
       expect(data).toEqual({ error: 'Invalid registration data' })
     })
 
+    it('should return 400 for password under 8 characters', async () => {
+      const request = createMockRequest({ email: 'test@example.com', password: 'short1' })
+      const response = await POST(request)
+      const data = await response.json()
+      expect(response.status).toBe(400)
+      expect(data).toEqual({ error: 'Invalid registration data' })
+    })
+
     it('should return 400 for missing email', async () => {
       const request = createMockRequest({ password: 'password123' })
       const response = await POST(request)
@@ -92,6 +100,24 @@ describe('/api/auth/register', () => {
       const data = await response.json()
       expect(response.status).toBe(201)
       expect(data).toEqual({ success: true })
+    })
+
+    it('should return 201 with requiresLogin when signIn fails after insert', async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([]),
+        }),
+      })
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockResolvedValue([]),
+      })
+      mockSignIn.mockRejectedValue(new Error('Session error'))
+
+      const request = createMockRequest({ email: 'new@example.com', password: 'password123' })
+      const response = await POST(request)
+      const data = await response.json()
+      expect(response.status).toBe(201)
+      expect(data).toEqual({ success: true, requiresLogin: true })
     })
 
     it('should handle server errors gracefully', async () => {

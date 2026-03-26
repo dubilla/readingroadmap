@@ -7,8 +7,8 @@ import bcrypt from 'bcrypt'
 import { z } from 'zod'
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: z.string().email().transform(e => e.toLowerCase()),
+  password: z.string().min(8),
   name: z.string().min(1).optional(),
 })
 
