@@ -7,6 +7,16 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   serverExternalPackages: ['bcrypt'],
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        nock: false,
+        'mock-aws-s3': false,
+      };
+    }
+    return config;
+  },
 }
 
 export default nextConfig
