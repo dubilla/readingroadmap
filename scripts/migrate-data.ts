@@ -106,14 +106,19 @@ async function main() {
   }
 
   // ── 2. swimlanes ───────────────────────────────────────────────────────────
-  const swims = await fetchFromSupabase<any>('swimlanes')
-  console.log(`Migrating ${swims.length} swimlanes...`)
-  for (const swim of swims) {
-    await sql`
-      INSERT INTO swimlanes (id, name, description, "order", user_id)
-      VALUES (${swim.id}, ${swim.name}, ${swim.description}, ${swim.order}, ${USER_ID})
-      ON CONFLICT (id) DO NOTHING
-    `
+  let swims: any[] = []
+  try {
+    swims = await fetchFromSupabase<any>('swimlanes')
+    console.log(`Migrating ${swims.length} swimlanes...`)
+    for (const swim of swims) {
+      await sql`
+        INSERT INTO swimlanes (id, name, description, "order", user_id)
+        VALUES (${swim.id}, ${swim.name}, ${swim.description}, ${swim.order}, ${USER_ID})
+        ON CONFLICT (id) DO NOTHING
+      `
+    }
+  } catch {
+    console.log('No swimlanes table in Supabase, skipping...')
   }
 
   // ── 3. books ───────────────────────────────────────────────────────────────
