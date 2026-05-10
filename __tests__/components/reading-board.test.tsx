@@ -12,11 +12,17 @@ jest.mock('../../lib/queryClient', () => ({
 // Mock useQueryClient
 const mockInvalidateQueries = jest.fn()
 const mockRefetchQueries = jest.fn().mockResolvedValue(undefined)
+const mockCancelQueries = jest.fn().mockResolvedValue(undefined)
+const mockGetQueryData = jest.fn()
+const mockSetQueryData = jest.fn()
 jest.mock('@tanstack/react-query', () => ({
   ...jest.requireActual('@tanstack/react-query'),
   useQueryClient: () => ({
     invalidateQueries: mockInvalidateQueries,
     refetchQueries: mockRefetchQueries,
+    cancelQueries: mockCancelQueries,
+    getQueryData: mockGetQueryData,
+    setQueryData: mockSetQueryData,
   }),
 }))
 

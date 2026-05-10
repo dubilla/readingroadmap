@@ -124,7 +124,7 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
         requests.push(apiRequest("PATCH", `/api/books/${bookId}/status`, { status }));
       }
       await Promise.all(requests);
-    } catch (error) {
+    } catch {
       if (previous) queryClient.setQueryData(queryKey, previous);
       toast({ title: "Failed to move book", variant: "destructive" });
     } finally {
