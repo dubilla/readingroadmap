@@ -197,14 +197,17 @@ export default function HomePage() {
             </div>
 
             <div className="space-y-4">
-              <Button 
-                size="lg" 
-                onClick={() => router.push('/auth')}
-                className="px-8"
-              >
-                Get Started
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
+              <div className="flex flex-wrap gap-3 justify-center">
+                <Button
+                  size="lg"
+                  onClick={() => router.push('/auth')}
+                  className="px-8"
+                >
+                  Get Started
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+                <BookSearch />
+              </div>
               <p className="text-sm text-muted-foreground">
                 Create an account to start organizing your reading journey
               </p>
