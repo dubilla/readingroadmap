@@ -91,31 +91,44 @@ export function ReadingBoard({ books, userLanes }: ReadingBoardProps) {
     }
   });
 
-  const onDragEnd = (result: DropResult) => {
+  const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
+    if (!result.destination.droppableId.startsWith('lane-')) return;
 
     const bookId = parseInt(result.draggableId);
-    const destinationId = result.destination.droppableId;
+    const parts = result.destination.droppableId.split('-');
+    const laneIdStr = parts[1];
+    const status = parts.slice(2).join('-'); // Handle "to-read" with hyphen
+    const laneId = laneIdStr === 'default' ? null : parseInt(laneIdStr);
 
-    // Parse the destination - format is "lane-{laneId}-{status}"
-    if (destinationId.startsWith('lane-')) {
-      // Format: lane-{laneId}-{status}
-      const parts = destinationId.split('-');
-      const laneIdStr = parts[1];
-      const status = parts.slice(2).join('-'); // Handle "to-read" with hyphen
-      const laneId = laneIdStr === 'default' ? null : parseInt(laneIdStr);
+    const book = books.find(b => b.id === bookId);
+    if (!book) return;
 
-      // Get current book to check if status changed
-      const book = books.find(b => b.id === bookId);
-      const currentStatus = book?.status;
+    const laneChanged = book.laneId !== laneId;
+    const statusChanged = book.status !== status;
+    if (!laneChanged && !statusChanged) return;
 
-      // Update lane
-      updateBookLaneMutation.mutate({ bookId, laneId });
+    const queryKey = ["/api/books"];
+    await queryClient.cancelQueries({ queryKey });
+    const previous = queryClient.getQueryData<Book[]>(queryKey);
+    queryClient.setQueryData<Book[]>(queryKey, (old) =>
+      old?.map(b => b.id === bookId ? { ...b, laneId, status: status as Book["status"] } : b)
+    );
 
-      // Update status if it changed
-      if (currentStatus !== status) {
-        updateBookStatusMutation.mutate({ bookId, status });
+    try {
+      const requests: Promise<unknown>[] = [];
+      if (laneChanged) {
+        requests.push(apiRequest("PATCH", `/api/books/${bookId}/lane`, { laneId }));
       }
+      if (statusChanged) {
+        requests.push(apiRequest("PATCH", `/api/books/${bookId}/status`, { status }));
+      }
+      await Promise.all(requests);
+    } catch {
+      if (previous) queryClient.setQueryData(queryKey, previous);
+      toast({ title: "Failed to move book", variant: "destructive" });
+    } finally {
+      queryClient.invalidateQueries({ queryKey });
     }
   };
 
