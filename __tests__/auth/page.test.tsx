@@ -1,6 +1,7 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '../../test/test-utils'
 import AuthPage from '../../app/auth/page'
+import { useSearchParams, useRouter } from 'next/navigation'
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
@@ -26,6 +27,8 @@ global.fetch = jest.fn()
 describe('AuthPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(useSearchParams as jest.Mock).mockReturnValue({ get: () => null })
+    ;(useRouter as jest.Mock).mockReturnValue({ push: jest.fn(), replace: jest.fn(), back: jest.fn() })
   })
 
   it('renders login form by default', async () => {
@@ -84,6 +87,94 @@ describe('AuthPage', () => {
     await waitFor(() => {
       expect(fetch).toHaveBeenCalledWith('/api/auth/register', expect.anything())
     })
+  })
+
+  it('adds pending book after successful registration when book param is present', async () => {
+    const pendingBook = {
+      title: 'Pending Book',
+      author: 'Pending Author',
+      pages: 200,
+      coverUrl: 'https://example.com/cover.jpg',
+      status: 'to-read',
+      laneId: null,
+    }
+    ;(useSearchParams as jest.Mock).mockReturnValue({
+      get: (key: string) => (key === 'book' ? encodeURIComponent(JSON.stringify(pendingBook)) : null),
+    })
+    const push = jest.fn()
+    ;(useRouter as jest.Mock).mockReturnValue({ push, replace: jest.fn(), back: jest.fn() })
+
+    const fetchMock = fetch as jest.MockedFunction<typeof fetch>
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response) // register
+      .mockResolvedValueOnce({ ok: true, json: async () => pendingBook } as Response) // POST /api/books
+
+    render(<AuthPage />)
+    fireEvent.click(screen.getByText("Don't have an account? Sign up"))
+    fireEvent.change(screen.getByPlaceholderText('Enter your email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByDisplayValue(''), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /create account/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/books', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(pendingBook),
+      }))
+    })
+    expect(push).toHaveBeenCalledWith('/')
+  })
+
+  it('adds pending book after successful login when book param is present', async () => {
+    const pendingBook = {
+      title: 'Login Book',
+      author: 'Login Author',
+      pages: 150,
+      coverUrl: 'https://example.com/cover.jpg',
+      status: 'to-read',
+      laneId: null,
+    }
+    ;(useSearchParams as jest.Mock).mockReturnValue({
+      get: (key: string) => (key === 'book' ? encodeURIComponent(JSON.stringify(pendingBook)) : null),
+    })
+    const push = jest.fn()
+    ;(useRouter as jest.Mock).mockReturnValue({ push, replace: jest.fn(), back: jest.fn() })
+
+    const fetchMock = fetch as jest.MockedFunction<typeof fetch>
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response) // login
+      .mockResolvedValueOnce({ ok: true, json: async () => pendingBook } as Response) // POST /api/books
+
+    render(<AuthPage />)
+    fireEvent.change(screen.getByPlaceholderText('Enter your email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByDisplayValue(''), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/books', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify(pendingBook),
+      }))
+    })
+    expect(push).toHaveBeenCalledWith('/')
+  })
+
+  it('does not call /api/books when no book param is present', async () => {
+    const push = jest.fn()
+    ;(useRouter as jest.Mock).mockReturnValue({ push, replace: jest.fn(), back: jest.fn() })
+
+    const fetchMock = fetch as jest.MockedFunction<typeof fetch>
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true }) } as Response)
+
+    render(<AuthPage />)
+    fireEvent.change(screen.getByPlaceholderText('Enter your email'), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByDisplayValue(''), { target: { value: 'password123' } })
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
+
+    await waitFor(() => {
+      expect(push).toHaveBeenCalledWith('/')
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/books', expect.anything())
   })
 
   it('validates required fields', async () => {

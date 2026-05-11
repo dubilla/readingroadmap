@@ -32,8 +32,30 @@ function AuthForm() {
   const searchParams = useSearchParams()
   const bookDataParam = searchParams.get('book')
 
-  // Parse book data from URL if present
-  const bookData = bookDataParam ? JSON.parse(decodeURIComponent(bookDataParam)) : null
+  // Parse book data from URL if present. Guard against malformed JSON so a bad
+  // URL param can't break the whole auth page.
+  let bookData: { title: string; author: string; pages: number; coverUrl: string; status: string; laneId: number | null } | null = null
+  if (bookDataParam) {
+    try {
+      bookData = JSON.parse(decodeURIComponent(bookDataParam))
+    } catch {
+      bookData = null
+    }
+  }
+
+  const addPendingBook = async () => {
+    if (!bookData) return
+    try {
+      await fetch('/api/books', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(bookData),
+      })
+    } catch {
+      // Non-fatal: account is still created/logged in. The user can retry from the dashboard.
+    }
+  }
 
   const loginForm = useForm({
     resolver: zodResolver(loginSchema),
@@ -73,6 +95,7 @@ function AuthForm() {
           variant: "destructive",
         })
       } else {
+        await addPendingBook()
         toast({
           title: "Success",
           description: "Welcome back!",
@@ -119,6 +142,7 @@ function AuthForm() {
           // Don't redirect - let user check their email
         } else {
           // Immediate sign in (development mode)
+          await addPendingBook()
           toast({
             title: "Success",
             description: "Account created successfully!",
