@@ -8,7 +8,9 @@ import type { Book, UserLane } from '@shared/schema'
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
     push: jest.fn(),
+    replace: jest.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 // Mock the API request function

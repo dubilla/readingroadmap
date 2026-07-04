@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { Suspense, useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { ReadingBoard } from "../components/reading-board"
 import { Card, CardContent } from "../components/ui/card"
@@ -15,10 +15,53 @@ import { Book as BookIcon, BookOpen, ListTodo, PanelRight, Library, TrendingUp, 
 import { useToast } from "@/hooks/use-toast"
 import type { Book, UserLane, ReadingGoal } from "../shared/schema"
 import { apiRequest } from "../lib/queryClient"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
+
+const TAB_VALUES = ["dashboard", "readingBoard"] as const
+type TabValue = (typeof TAB_VALUES)[number]
+
+function isTabValue(value: string | null): value is TabValue {
+  return value !== null && (TAB_VALUES as readonly string[]).includes(value)
+}
 
 export default function HomePage() {
+  return (
+    <Suspense fallback={<HomePageFallback />}>
+      <HomePageContent />
+    </Suspense>
+  )
+}
+
+function HomePageFallback() {
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <NavHeader />
+      <main className="flex-1 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto space-y-8">
+          <Skeleton className="h-12 w-64" />
+          <Skeleton className="h-4 w-96" />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Skeleton key={i} className="h-24 sm:h-32" />
+            ))}
+          </div>
+        </div>
+      </main>
+    </div>
+  )
+}
+
+function HomePageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const tabParam = searchParams.get("tab")
+  const activeTab: TabValue = isTabValue(tabParam) ? tabParam : "dashboard"
+
+  const setActiveTab = (value: TabValue) => {
+    const next = value === "dashboard" ? "/" : `/?tab=${value}`
+    router.replace(next, { scroll: false })
+  }
+
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null)
   const [user, setUser] = useState<{ email: string } | null>(null)
   
@@ -59,7 +102,6 @@ export default function HomePage() {
     enabled: isAuthenticated === true
   })
 
-  const [activeTab, setActiveTab] = useState("dashboard")
   const [goalFormOpen, setGoalFormOpen] = useState(false)
   const [editingGoal, setEditingGoal] = useState<ReadingGoal | null>(null)
   const [selectedBook, setSelectedBook] = useState<Book | null>(null)
